@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bolão Copa do Mundo</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "fast-check": "https://esm.sh/fast-check"
+      }
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Bolão Copa do Mundo</h1>
+  </header>
+
+  <main id="app">
+    <section id="loading" class="loading">
+      <p>Carregando dados...</p>
+    </section>
+
+    <section id="error" class="error" hidden>
+    </section>
+
+    <section id="ranking" hidden>
+      <h2>Ranking</h2>
+      <div id="ranking-table"></div>
+    </section>
+
+    <section id="participant-details" hidden>
+      <h2>Detalhes do Participante</h2>
+      <div id="details-content"></div>
+    </section>
+
+    <section id="match-list" hidden>
+      <h2>Partidas</h2>
+      <div id="matches-content"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Bolão Copa do Mundo &copy; 2025</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
