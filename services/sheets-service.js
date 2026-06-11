@@ -18,7 +18,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 2) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      const timeout = setTimeout(() => controller.abort(), 15000);
       const response = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeout);
 
@@ -31,189 +31,110 @@ async function fetchWithRetry(url, options = {}, maxRetries = 2) {
   }
 }
 
+const IGNORED_TABS = ['seleções', 'instruções'];
+
 /**
  * Serviço responsável por buscar e normalizar os dados de palpites da Google Sheets.
+ * Usa batchGet para buscar todas as abas em uma única requisição.
  */
 class SheetsService {
-  /**
-   * @param {string} spreadsheetId - ID da planilha Google Sheets
-   * @param {string} apiKey - API key do Google Cloud Console
-   * @param {Object} [options] - Opções adicionais
-   * @param {string} [options.range] - Range dos dados na planilha (ex: 'Palpites!A:F')
-   */
   constructor(spreadsheetId, apiKey, options = {}) {
     this.spreadsheetId = spreadsheetId;
     this.apiKey = apiKey;
     this.range = options.range || 'Palpites!A:F';
+    this._cache = null;
   }
 
   /**
-   * Busca todos os palpites da planilha.
-   * Tenta primeiro o formato de aba única; se a planilha tiver múltiplas abas,
-   * busca os metadados e itera sobre cada aba.
-   * @returns {Promise<Prediction[]>}
+   * Busca todos os dados da planilha de uma vez (palpites + campeões).
+   * Usa batchGet para fazer UMA única requisição à API.
+   * @returns {Promise<{predictions: Prediction[], championPicks: Map<string, string>}>}
    */
-  async fetchPredictions() {
+  async fetchAll() {
+    if (this._cache) return this._cache;
+
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}`;
 
-    // Tenta buscar no formato aba única primeiro
-    try {
-      const url = `${baseUrl}/values/${encodeURIComponent(this.range)}?key=${this.apiKey}`;
-      const data = await fetchWithRetry(url);
-
-      if (data.values && data.values.length > 1) {
-        const parsed = this._parseSheetsResponse(data);
-        if (parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (error) {
-      // Se falhar, tenta formato multi-tab abaixo
-    }
-
-    // Formato multi-tab: busca metadados da planilha para obter nomes das abas
+    // 1. Busca metadados para saber os nomes das abas
     const metaUrl = `${baseUrl}?fields=sheets.properties.title&key=${this.apiKey}`;
     const meta = await fetchWithRetry(metaUrl);
 
     if (!meta.sheets || meta.sheets.length === 0) {
-      throw new Error('Formato da planilha inválido. Verifique se as colunas estão corretas.');
+      throw new Error('Planilha vazia ou inacessível.');
     }
 
+    // Filtra abas de participantes
+    const participantTabs = meta.sheets
+      .map(s => s.properties.title)
+      .filter(title => !IGNORED_TABS.includes(title.toLowerCase()));
+
+    if (participantTabs.length === 0) {
+      throw new Error('Nenhuma aba de participante encontrada.');
+    }
+
+    // 2. Busca TODAS as abas numa única chamada com batchGet
+    const ranges = participantTabs.map(t => encodeURIComponent(t)).join('&ranges=');
+    const batchUrl = `${baseUrl}/values:batchGet?ranges=${ranges}&key=${this.apiKey}`;
+    const batchData = await fetchWithRetry(batchUrl);
+
+    if (!batchData.valueRanges) {
+      throw new Error('Formato da planilha inválido.');
+    }
+
+    // 3. Processa todas as abas
     const predictions = [];
-    const ignoredTabs = ['Seleções', 'seleções', 'Instruções', 'instruções'];
+    const championPicks = new Map();
 
-    for (const sheet of meta.sheets) {
-      const sheetTitle = sheet.properties.title;
+    for (let i = 0; i < batchData.valueRanges.length; i++) {
+      const sheetTitle = participantTabs[i];
+      const values = batchData.valueRanges[i].values;
 
-      // Ignora abas auxiliares que não são participantes
-      if (ignoredTabs.includes(sheetTitle)) {
-        continue;
+      if (!values || values.length < 2) continue;
+
+      // Extrai campeão
+      for (const row of values) {
+        if (row && row[0] && row[0].toLowerCase().includes('campeão') && row[3]) {
+          championPicks.set(sheetTitle, row[3].trim());
+          break;
+        }
       }
 
-      const sheetUrl = `${baseUrl}/values/${encodeURIComponent(sheetTitle)}?key=${this.apiKey}`;
-
-      try {
-        const sheetData = await fetchWithRetry(sheetUrl);
-        const tabPredictions = this._parseMultiTabSheet(sheetTitle, sheetData);
-        predictions.push(...tabPredictions);
-      } catch (error) {
-        // Ignora abas que não consegue ler (podem ser abas auxiliares)
-        continue;
-      }
+      // Extrai palpites
+      const tabPredictions = this._parseMultiTabSheet(sheetTitle, { values });
+      predictions.push(...tabPredictions);
     }
 
     if (predictions.length === 0) {
       throw new Error('Formato da planilha inválido. Verifique se as colunas estão corretas.');
     }
 
+    this._cache = { predictions, championPicks };
+    return this._cache;
+  }
+
+  /**
+   * Busca todos os palpites (mantém compatibilidade).
+   * @returns {Promise<Prediction[]>}
+   */
+  async fetchPredictions() {
+    const { predictions } = await this.fetchAll();
     return predictions;
   }
 
   /**
-   * Busca o campeão escolhido por cada participante.
-   * O campeão fica na linha que contém "Campeão" na coluna A, e o valor na coluna D (índice 3).
-   * @returns {Promise<Map<string, string>>} Mapa participante -> campeão escolhido
+   * Busca os campeões escolhidos (mantém compatibilidade).
+   * @returns {Promise<Map<string, string>>}
    */
   async fetchChampionPicks() {
-    const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}`;
-    const metaUrl = `${baseUrl}?fields=sheets.properties.title&key=${this.apiKey}`;
-    const meta = await fetchWithRetry(metaUrl);
-
-    const championPicks = new Map();
-    const ignoredTabs = ['Seleções', 'seleções', 'Instruções', 'instruções'];
-
-    for (const sheet of meta.sheets) {
-      const sheetTitle = sheet.properties.title;
-      if (ignoredTabs.includes(sheetTitle)) continue;
-
-      const sheetUrl = `${baseUrl}/values/${encodeURIComponent(sheetTitle)}?key=${this.apiKey}`;
-
-      try {
-        const sheetData = await fetchWithRetry(sheetUrl);
-        if (!sheetData || !sheetData.values) continue;
-
-        for (const row of sheetData.values) {
-          if (row && row[0] && row[0].toLowerCase().includes('campeão') && row[3]) {
-            championPicks.set(sheetTitle, row[3].trim());
-            break;
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-
+    const { championPicks } = await this.fetchAll();
     return championPicks;
   }
 
   /**
-   * Normaliza os dados brutos da API (formato aba única com coluna de participante)
-   * em Prediction[].
-   * Espera que a primeira linha seja o cabeçalho e as subsequentes sejam dados.
-   * @param {Object} data - Resposta da Google Sheets API
-   * @param {string[][]} data.values - Matriz de valores da planilha
-   * @returns {Prediction[]}
-   */
-  _parseSheetsResponse(data) {
-    if (!data || !data.values || data.values.length < 2) {
-      return [];
-    }
-
-    const rows = data.values;
-    const predictions = [];
-
-    // Pula a primeira linha (cabeçalho)
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-
-      // Precisa de pelo menos 5 colunas: participante, time mandante, time visitante, placar mandante, placar visitante
-      if (!row || row.length < 5) {
-        continue;
-      }
-
-      const [participantName, homeTeam, awayTeam, homeScoreStr, awayScoreStr] = row;
-
-      // Valida que temos dados essenciais
-      if (!participantName || !homeTeam || !awayTeam) {
-        continue;
-      }
-
-      const homeScore = Number(homeScoreStr);
-      const awayScore = Number(awayScoreStr);
-
-      // Valida que os placares são números válidos e não-negativos
-      if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
-        continue;
-      }
-
-      if (homeScore < 0 || awayScore < 0) {
-        continue;
-      }
-
-      // Valida que os placares são inteiros
-      if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore)) {
-        continue;
-      }
-
-      predictions.push({
-        participantName: participantName.trim(),
-        homeTeam: homeTeam.trim(),
-        awayTeam: awayTeam.trim(),
-        homeScore,
-        awayScore,
-      });
-    }
-
-    return predictions;
-  }
-
-  /**
    * Normaliza os dados de uma aba individual (formato multi-tab).
-   * Cada aba representa um participante.
    * Formato esperado: Data | Grupo | Jogo | Time 1 | Gols | x | Gols2 | Time 2
-   * @param {string} participantName - Nome do participante (título da aba)
-   * @param {Object} data - Resposta da Google Sheets API para a aba
-   * @param {string[][]} data.values - Matriz de valores da aba
+   * @param {string} participantName
+   * @param {Object} data
    * @returns {Prediction[]}
    */
   _parseMultiTabSheet(participantName, data) {
@@ -227,39 +148,19 @@ class SheetsService {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
 
-      // Precisa de pelo menos 8 colunas: Data, Grupo, Jogo, Time1, Gols, x, Gols2, Time2
-      if (!row || row.length < 8) {
-        continue;
-      }
+      if (!row || row.length < 8) continue;
 
       const [, , , homeTeam, homeScoreStr, , awayScoreStr, awayTeam] = row;
 
-      // Pula cabeçalhos e linhas sem times válidos
-      if (!homeTeam || !awayTeam || homeTeam === 'Time 1' || awayTeam === 'Time 2') {
-        continue;
-      }
-
-      // Pula linhas de fases futuras sem palpite preenchido
-      if (!homeScoreStr || !awayScoreStr || homeScoreStr.trim() === '' || awayScoreStr.trim() === '') {
-        continue;
-      }
+      if (!homeTeam || !awayTeam || homeTeam === 'Time 1' || awayTeam === 'Time 2') continue;
+      if (!homeScoreStr || !awayScoreStr || homeScoreStr.trim() === '' || awayScoreStr.trim() === '') continue;
 
       const homeScore = Number(homeScoreStr);
       const awayScore = Number(awayScoreStr);
 
-      // Valida que os placares são números válidos e não-negativos
-      if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
-        continue;
-      }
-
-      if (homeScore < 0 || awayScore < 0) {
-        continue;
-      }
-
-      // Valida que os placares são inteiros
-      if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore)) {
-        continue;
-      }
+      if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) continue;
+      if (homeScore < 0 || awayScore < 0) continue;
+      if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore)) continue;
 
       predictions.push({
         participantName: participantName.trim(),

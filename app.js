@@ -52,24 +52,23 @@ async function main() {
 
   let predictions = null;
   let matches = null;
+  let championPicks = new Map();
   let predictionsError = null;
   let matchesError = null;
 
-  // Busca palpites com fallback para cache
+  // Busca palpites e campeões numa única requisição
   try {
-    predictions = await sheetsService.fetchPredictions();
-    cacheData(CACHE_KEYS.PREDICTIONS, predictions);
+    const sheetsData = await sheetsService.fetchAll();
+    predictions = sheetsData.predictions;
+    championPicks = sheetsData.championPicks;
+    cacheData(CACHE_KEYS.PREDICTIONS, { predictions: predictions, champions: [...championPicks] });
   } catch (error) {
     predictionsError = error;
-    predictions = getCachedData(CACHE_KEYS.PREDICTIONS);
-  }
-
-  // Busca campeões escolhidos
-  let championPicks = new Map();
-  try {
-    championPicks = await sheetsService.fetchChampionPicks();
-  } catch {
-    // Se falhar, segue sem campeões
+    const cached = getCachedData(CACHE_KEYS.PREDICTIONS);
+    if (cached) {
+      predictions = cached.predictions;
+      championPicks = new Map(cached.champions || []);
+    }
   }
 
   // Busca partidas com fallback para cache
