@@ -50,17 +50,19 @@ class FootballApiService {
 
   /**
    * Busca todas as partidas da Copa do Mundo.
+   * Usa proxy CORS para contornar restrição de chamadas client-side.
    * @returns {Promise<MatchResult[]>}
    */
   async fetchMatches() {
-    const url = `https://api.football-data.org/v4/competitions/${CONFIG.COMPETITION_CODE}/matches`;
+    const targetUrl = `https://api.football-data.org/v4/competitions/${CONFIG.COMPETITION_CODE}/matches`;
+    const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
     const options = {
       headers: {
         'X-Auth-Token': this.apiToken,
       },
     };
 
-    const data = await fetchWithRetry(url, options);
+    const data = await fetchWithRetry(proxyUrl, options);
     return this._parseMatchesResponse(data);
   }
 
