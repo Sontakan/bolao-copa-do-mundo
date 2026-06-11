@@ -133,7 +133,7 @@ export class UIRenderer {
       <h3>${this._escapeHtml(participant.name)}</h3>
       <p class="details-summary">
         <strong>${participant.totalPoints}</strong> ponto${participant.totalPoints !== 1 ? 's' : ''} 
-        — ${participant.exactPredictions} placar exato, ${participant.winnerPredictions} vencedor
+        — ${participant.exactPredictions} placar exato, ${participant.winnerPredictions} acertos parciais
       </p>
       ${championInfo}
     `;
