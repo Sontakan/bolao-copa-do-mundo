@@ -210,12 +210,12 @@ class RankingEngine {
    * @returns {{points: number, pointType: string}}
    */
   _calculatePoints(prediction, match) {
-    // Placar exato
+    // Placar exato (incluindo empates com mesma quantidade de gols)
     if (prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore) {
       return { points: POINTS.EXACT, pointType: 'exact' };
     }
 
-    // Acertou o vencedor ou empate
+    // Acertou o vencedor ou empate (mas errou o placar)
     const predictedResult = Math.sign(prediction.homeScore - prediction.awayScore);
     const actualResult = Math.sign(match.homeScore - match.awayScore);
 
