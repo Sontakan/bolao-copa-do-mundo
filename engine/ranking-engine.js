@@ -19,6 +19,60 @@
  */
 
 /**
+ * Mapeamento de nomes de times em PT-BR (planilha) para inglês (API football-data.org).
+ */
+const TEAM_NAME_MAP = {
+  'México': 'Mexico',
+  'África do Sul': 'South Africa',
+  'Coreia do Sul': 'South Korea',
+  'República Tcheca': 'Czechia',
+  'Bósnia': 'Bosnia-Herzegovina',
+  'Estados Unidos': 'United States',
+  'Suíça': 'Switzerland',
+  'Escócia': 'Scotland',
+  'Austrália': 'Australia',
+  'Alemanha': 'Germany',
+  'Curaçao': 'Curaçao',
+  'Costa do Marfim': 'Ivory Coast',
+  'Equador': 'Ecuador',
+  'Holanda': 'Netherlands',
+  'Japão': 'Japan',
+  'Suécia': 'Sweden',
+  'Tunísia': 'Tunisia',
+  'Espanha': 'Spain',
+  'Cabo Verde': 'Cape Verde Islands',
+  'Arábia Saudita': 'Saudi Arabia',
+  'Uruguai': 'Uruguay',
+  'Bélgica': 'Belgium',
+  'Egito': 'Egypt',
+  'Irã': 'Iran',
+  'Nova Zelândia': 'New Zealand',
+  'França': 'France',
+  'Iraque': 'Iraq',
+  'Noruega': 'Norway',
+  'Argentina': 'Argentina',
+  'Argélia': 'Algeria',
+  'Áustria': 'Austria',
+  'Jordânia': 'Jordan',
+  'Portugal': 'Portugal',
+  'RD Congo': 'Congo DR',
+  'Inglaterra': 'England',
+  'Croácia': 'Croatia',
+  'Gana': 'Ghana',
+  'Panamá': 'Panama',
+  'Uzbequistão': 'Uzbekistan',
+  'Colômbia': 'Colombia',
+  'Turquia': 'Turkey',
+  'Paraguai': 'Paraguay',
+  'Marrocos': 'Morocco',
+  'Brasil': 'Brazil',
+  'Haiti': 'Haiti',
+  'Canadá': 'Canada',
+  'Catar': 'Qatar',
+  'Senegal': 'Senegal',
+};
+
+/**
  * Motor de cálculo de ranking do bolão.
  * Compara palpites dos participantes com os resultados reais das partidas
  * e produz um ranking ordenado.
@@ -52,9 +106,13 @@ class RankingEngine {
       const details = [];
 
       for (const prediction of participantPredictions) {
+        // Normaliza os nomes dos times para o padrão da API
+        const normalizedHome = TEAM_NAME_MAP[prediction.homeTeam] || prediction.homeTeam;
+        const normalizedAway = TEAM_NAME_MAP[prediction.awayTeam] || prediction.awayTeam;
+
         // Encontra a partida correspondente ao palpite
         const match = matches.find(
-          m => m.homeTeam === prediction.homeTeam && m.awayTeam === prediction.awayTeam
+          m => m.homeTeam === normalizedHome && m.awayTeam === normalizedAway
         );
 
         if (match) {

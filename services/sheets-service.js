@@ -80,9 +80,16 @@ class SheetsService {
     }
 
     const predictions = [];
+    const ignoredTabs = ['Seleções', 'seleções', 'Instruções', 'instruções'];
 
     for (const sheet of meta.sheets) {
       const sheetTitle = sheet.properties.title;
+
+      // Ignora abas auxiliares que não são participantes
+      if (ignoredTabs.includes(sheetTitle)) {
+        continue;
+      }
+
       const sheetUrl = `${baseUrl}/values/${encodeURIComponent(sheetTitle)}?key=${this.apiKey}`;
 
       try {
@@ -165,8 +172,8 @@ class SheetsService {
 
   /**
    * Normaliza os dados de uma aba individual (formato multi-tab).
-   * Cada aba representa um participante. Espera colunas:
-   * Time Mandante, Time Visitante, Placar Mandante, Placar Visitante
+   * Cada aba representa um participante.
+   * Formato esperado: Data | Grupo | Jogo | Time 1 | Gols | x | Gols2 | Time 2
    * @param {string} participantName - Nome do participante (título da aba)
    * @param {Object} data - Resposta da Google Sheets API para a aba
    * @param {string[][]} data.values - Matriz de valores da aba
@@ -180,19 +187,23 @@ class SheetsService {
     const rows = data.values;
     const predictions = [];
 
-    // Pula a primeira linha (cabeçalho)
-    for (let i = 1; i < rows.length; i++) {
+    for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
 
-      // Precisa de pelo menos 4 colunas: time mandante, time visitante, placar mandante, placar visitante
-      if (!row || row.length < 4) {
+      // Precisa de pelo menos 8 colunas: Data, Grupo, Jogo, Time1, Gols, x, Gols2, Time2
+      if (!row || row.length < 8) {
         continue;
       }
 
-      const [homeTeam, awayTeam, homeScoreStr, awayScoreStr] = row;
+      const [, , , homeTeam, homeScoreStr, , awayScoreStr, awayTeam] = row;
 
-      // Valida que temos dados essenciais
-      if (!homeTeam || !awayTeam) {
+      // Pula cabeçalhos e linhas sem times válidos
+      if (!homeTeam || !awayTeam || homeTeam === 'Time 1' || awayTeam === 'Time 2') {
+        continue;
+      }
+
+      // Pula linhas de fases futuras sem palpite preenchido
+      if (!homeScoreStr || !awayScoreStr || homeScoreStr.trim() === '' || awayScoreStr.trim() === '') {
         continue;
       }
 
