@@ -2,9 +2,8 @@ name: Update Match Results
 
 on:
   schedule:
-    # Roda a cada 30 minutos
     - cron: '*/30 * * * *'
-  workflow_dispatch: # Permite rodar manualmente
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,23 +23,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch results from ESPN API
+      - name: Fetch and update results from ESPN
         run: |
           python3 << 'EOF'
           import json
           import urllib.request
           from datetime import datetime, timedelta
 
-          # Busca jogos da Copa do Mundo nos últimos 2 dias e hoje
-          all_matches = []
+          # Carrega results.json existente
+          try:
+              with open('results.json') as f:
+                  existing = json.load(f)
+          except:
+              existing = []
+
+          # Cria mapa dos jogos existentes por homeTeam-awayTeam
+          match_map = {}
+          for m in existing:
+              if m.get('homeTeam') and m.get('awayTeam'):
+                  key = f"{m['homeTeam']}-{m['awayTeam']}"
+                  match_map[key] = m
+
+          # Busca resultados da ESPN para os últimos 3 dias e hoje
           today = datetime.utcnow()
+          updates = 0
 
-          # Busca do dia 11/jun até hoje
-          start = datetime(2026, 6, 11)
-          current = start
-
-          while current <= today:
-              date_str = current.strftime('%Y%m%d')
+          for days_back in range(3):
+              date = today - timedelta(days=days_back)
+              date_str = date.strftime('%Y%m%d')
               url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates={date_str}"
               
               try:
@@ -49,75 +59,67 @@ jobs:
                       data = json.loads(resp.read())
                   
                   for event in data.get('events', []):
-                      competitions = event.get('competitions', [{}])
-                      if not competitions:
-                          continue
-                      
-                      comp = competitions[0]
+                      comp = event.get('competitions', [{}])[0]
                       competitors = comp.get('competitors', [])
                       if len(competitors) != 2:
                           continue
                       
                       status_type = event.get('status', {}).get('type', {}).get('name', '')
+                      home = competitors[0].get('team', {}).get('displayName', '')
+                      away = competitors[1].get('team', {}).get('displayName', '')
                       
-                      # Mapeia status ESPN -> nosso formato
+                      if not home or not away:
+                          continue
+                      
+                      key = f"{home}-{away}"
+                      
                       if status_type == 'STATUS_FULL_TIME':
-                          status = 'FINISHED'
-                      elif status_type == 'STATUS_IN_PROGRESS' or status_type == 'STATUS_HALFTIME':
-                          status = 'IN_PLAY'
-                      else:
-                          status = 'TIMED'
+                          hs = competitors[0].get('score')
+                          aws = competitors[1].get('score')
+                          try:
+                              hs = int(hs)
+                              aws = int(aws)
+                          except (ValueError, TypeError):
+                              continue
+                          
+                          if key in match_map:
+                              old = match_map[key]
+                              if old.get('status') != 'FINISHED' or old.get('homeScore') != hs:
+                                  match_map[key]['homeScore'] = hs
+                                  match_map[key]['awayScore'] = aws
+                                  match_map[key]['status'] = 'FINISHED'
+                                  updates += 1
+                                  print(f"Updated: {home} {hs} x {aws} {away}")
+                          else:
+                              match_map[key] = {
+                                  "id": event.get('id', ''),
+                                  "homeTeam": home,
+                                  "awayTeam": away,
+                                  "homeScore": hs,
+                                  "awayScore": aws,
+                                  "status": "FINISHED",
+                                  "utcDate": event.get('date', ''),
+                                  "matchday": 0
+                              }
+                              updates += 1
+                              print(f"Added: {home} {hs} x {aws} {away}")
                       
-                      home_team = competitors[0].get('team', {}).get('displayName', '')
-                      away_team = competitors[1].get('team', {}).get('displayName', '')
-                      home_score = competitors[0].get('score')
-                      away_score = competitors[1].get('score')
-                      
-                      # Converte scores
-                      try:
-                          home_score = int(home_score) if home_score and status == 'FINISHED' else None
-                      except (ValueError, TypeError):
-                          home_score = None
-                      try:
-                          away_score = int(away_score) if away_score and status == 'FINISHED' else None
-                      except (ValueError, TypeError):
-                          away_score = None
-                      
-                      match_date = event.get('date', '')
-                      
-                      all_matches.append({
-                          "id": event.get('id', ''),
-                          "homeTeam": home_team,
-                          "awayTeam": away_team,
-                          "homeScore": home_score,
-                          "awayScore": away_score,
-                          "status": status,
-                          "utcDate": match_date,
-                          "matchday": 0
-                      })
+                      elif 'PROGRESS' in status_type or 'HALFTIME' in status_type:
+                          if key in match_map:
+                              match_map[key]['status'] = 'IN_PLAY'
+              
               except Exception as e:
                   print(f"Error fetching {date_str}: {e}")
-              
-              current += timedelta(days=1)
 
-          # Deduplica por homeTeam + awayTeam
-          seen = set()
-          unique_matches = []
-          for m in all_matches:
-              key = f"{m['homeTeam']}-{m['awayTeam']}"
-              if key not in seen:
-                  seen.add(key)
-                  unique_matches.append(m)
-
-          # Salva
+          # Salva resultado atualizado
+          result = list(match_map.values())
           with open('results.json', 'w') as f:
-              json.dump(unique_matches, f, indent=2, ensure_ascii=False)
+              json.dump(result, f, indent=2, ensure_ascii=False)
 
-          finished = [m for m in unique_matches if m['status'] == 'FINISHED']
-          print(f"Total matches found: {len(unique_matches)}")
-          print(f"Finished with score: {len(finished)}")
-          for m in finished:
-              print(f"  {m['homeTeam']} {m['homeScore']} x {m['awayScore']} {m['awayTeam']}")
+          finished = [m for m in result if m['status'] == 'FINISHED' and m.get('homeScore') is not None]
+          print(f"\nTotal matches: {len(result)}")
+          print(f"Finished: {len(finished)}")
+          print(f"Updates this run: {updates}")
           EOF
 
       - name: Commit results if changed

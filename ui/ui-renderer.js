@@ -205,19 +205,69 @@ export class UIRenderer {
   }
 
   /**
-   * Renderiza a lista de partidas com placares.
+   * Renderiza a lista de partidas com abas (Finalizadas / Próximas).
    * @param {MatchResult[]} matches
    */
   renderMatchList(matches) {
+    const finished = matches.filter(m => m.status === 'FINISHED' && m.homeScore !== null);
+    const upcoming = matches.filter(m => m.status !== 'FINISHED' || m.homeScore === null);
+
+    // Container de abas
+    const tabs = document.createElement('div');
+    tabs.classList.add('match-tabs');
+    tabs.innerHTML = `
+      <button class="match-tab active" data-tab="finished">Finalizadas (${finished.length})</button>
+      <button class="match-tab" data-tab="upcoming">Próximas (${upcoming.length})</button>
+    `;
+
+    const finishedList = this._createMatchList(finished);
+    const upcomingList = this._createMatchList(upcoming);
+    upcomingList.hidden = true;
+
+    // Event listeners das abas
+    tabs.querySelectorAll('.match-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.querySelectorAll('.match-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (btn.dataset.tab === 'finished') {
+          finishedList.hidden = false;
+          upcomingList.hidden = true;
+        } else {
+          finishedList.hidden = true;
+          upcomingList.hidden = false;
+        }
+      });
+    });
+
+    this.matchesContent.innerHTML = '';
+    this.matchesContent.appendChild(tabs);
+    this.matchesContent.appendChild(finishedList);
+    this.matchesContent.appendChild(upcomingList);
+    this.matchListSection.hidden = false;
+  }
+
+  /**
+   * Cria uma lista UL de partidas.
+   * @param {MatchResult[]} matches
+   * @returns {HTMLUListElement}
+   */
+  _createMatchList(matches) {
     const list = document.createElement('ul');
     list.classList.add('match-list');
-    list.setAttribute('aria-label', 'Lista de partidas');
+
+    if (matches.length === 0) {
+      const empty = document.createElement('li');
+      empty.classList.add('match-item');
+      empty.innerHTML = '<span class="match-teams">Nenhuma partida</span>';
+      list.appendChild(empty);
+      return list;
+    }
 
     for (const match of matches) {
       const item = document.createElement('li');
       item.classList.add('match-item');
 
-      const isFinished = match.status === 'FINISHED';
+      const isFinished = match.status === 'FINISHED' && match.homeScore !== null;
       const scoreDisplay = isFinished
         ? `${match.homeScore} x ${match.awayScore}`
         : this._getStatusLabel(match.status);
@@ -225,17 +275,15 @@ export class UIRenderer {
       const dateStr = this._formatDate(match.utcDate);
 
       item.innerHTML = `
-        <span class="match-teams">${this._escapeHtml(match.homeTeam)} vs ${this._escapeHtml(match.awayTeam)}</span>
+        <span class="match-teams">${this._escapeHtml(match.homeTeam || 'A definir')} vs ${this._escapeHtml(match.awayTeam || 'A definir')}</span>
         <span class="match-score ${isFinished ? 'score-final' : 'score-pending'}">${scoreDisplay}</span>
-        <span class="match-info">Rodada ${match.matchday} • ${dateStr}</span>
+        <span class="match-info">${dateStr}</span>
       `;
 
       list.appendChild(item);
     }
 
-    this.matchesContent.innerHTML = '';
-    this.matchesContent.appendChild(list);
-    this.matchListSection.hidden = false;
+    return list;
   }
 
   /**

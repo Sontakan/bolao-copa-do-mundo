@@ -23,21 +23,30 @@ class FootballApiService {
   }
 
   /**
-   * Busca as partidas. Tenta results.json primeiro (rápido), fallback para API.
+   * Busca as partidas. Usa results.json como fonte de placares,
+   * e complementa com a API para jogos futuros.
    * @returns {Promise<MatchResult[]>}
    */
   async fetchMatches() {
-    // Fonte principal: results.json local (atualizado pela Action)
+    let resultsData = [];
+    let apiData = [];
+
+    // Busca results.json (placares atualizados pela Action)
     try {
-      const response = await fetch('./results.json');
+      const response = await fetch('./results.json?t=' + Date.now());
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          return data;
+          resultsData = data;
         }
       }
     } catch {
-      // Fallback para API
+      // Continua sem results.json
+    }
+
+    // Se results.json tem jogos, usa como fonte principal
+    if (resultsData.length > 0) {
+      return resultsData;
     }
 
     // Fallback: API via proxy CORS
