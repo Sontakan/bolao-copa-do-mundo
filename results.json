@@ -1,0 +1,22 @@
+[
+  {
+    "id": "760415",
+    "homeTeam": "Mexico",
+    "awayTeam": "South Africa",
+    "homeScore": 2,
+    "awayScore": 0,
+    "status": "FINISHED",
+    "utcDate": "2026-06-11T19:00Z",
+    "matchday": 1
+  },
+  {
+    "id": "760414",
+    "homeTeam": "South Korea",
+    "awayTeam": "Czechia",
+    "homeScore": null,
+    "awayScore": null,
+    "status": "TIMED",
+    "utcDate": "2026-06-12T02:00Z",
+    "matchday": 1
+  }
+]

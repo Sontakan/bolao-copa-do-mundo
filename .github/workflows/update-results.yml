@@ -1,0 +1,151 @@
+name: Update Match Results
+
+on:
+  schedule:
+    # Roda a cada 30 minutos
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Permite rodar manualmente
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch results from ESPN API
+        run: |
+          python3 << 'EOF'
+          import json
+          import urllib.request
+          from datetime import datetime, timedelta
+
+          # Busca jogos da Copa do Mundo nos últimos 2 dias e hoje
+          all_matches = []
+          today = datetime.utcnow()
+
+          # Busca do dia 11/jun até hoje
+          start = datetime(2026, 6, 11)
+          current = start
+
+          while current <= today:
+              date_str = current.strftime('%Y%m%d')
+              url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates={date_str}"
+              
+              try:
+                  req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      data = json.loads(resp.read())
+                  
+                  for event in data.get('events', []):
+                      competitions = event.get('competitions', [{}])
+                      if not competitions:
+                          continue
+                      
+                      comp = competitions[0]
+                      competitors = comp.get('competitors', [])
+                      if len(competitors) != 2:
+                          continue
+                      
+                      status_type = event.get('status', {}).get('type', {}).get('name', '')
+                      
+                      # Mapeia status ESPN -> nosso formato
+                      if status_type == 'STATUS_FULL_TIME':
+                          status = 'FINISHED'
+                      elif status_type == 'STATUS_IN_PROGRESS' or status_type == 'STATUS_HALFTIME':
+                          status = 'IN_PLAY'
+                      else:
+                          status = 'TIMED'
+                      
+                      home_team = competitors[0].get('team', {}).get('displayName', '')
+                      away_team = competitors[1].get('team', {}).get('displayName', '')
+                      home_score = competitors[0].get('score')
+                      away_score = competitors[1].get('score')
+                      
+                      # Converte scores
+                      try:
+                          home_score = int(home_score) if home_score and status == 'FINISHED' else None
+                      except (ValueError, TypeError):
+                          home_score = None
+                      try:
+                          away_score = int(away_score) if away_score and status == 'FINISHED' else None
+                      except (ValueError, TypeError):
+                          away_score = None
+                      
+                      match_date = event.get('date', '')
+                      
+                      all_matches.append({
+                          "id": event.get('id', ''),
+                          "homeTeam": home_team,
+                          "awayTeam": away_team,
+                          "homeScore": home_score,
+                          "awayScore": away_score,
+                          "status": status,
+                          "utcDate": match_date,
+                          "matchday": 0
+                      })
+              except Exception as e:
+                  print(f"Error fetching {date_str}: {e}")
+              
+              current += timedelta(days=1)
+
+          # Deduplica por homeTeam + awayTeam
+          seen = set()
+          unique_matches = []
+          for m in all_matches:
+              key = f"{m['homeTeam']}-{m['awayTeam']}"
+              if key not in seen:
+                  seen.add(key)
+                  unique_matches.append(m)
+
+          # Salva
+          with open('results.json', 'w') as f:
+              json.dump(unique_matches, f, indent=2, ensure_ascii=False)
+
+          finished = [m for m in unique_matches if m['status'] == 'FINISHED']
+          print(f"Total matches found: {len(unique_matches)}")
+          print(f"Finished with score: {len(finished)}")
+          for m in finished:
+              print(f"  {m['homeTeam']} {m['homeScore']} x {m['awayScore']} {m['awayTeam']}")
+          EOF
+
+      - name: Commit results if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "auto: update match results from ESPN"
+            git push
+          fi
+
+      - name: Inject secrets into config.js
+        run: |
+          sed -i "s|__SHEETS_API_KEY__|${{ secrets.SHEETS_API_KEY }}|g" config.js
+          sed -i "s|__SPREADSHEET_ID__|${{ secrets.SPREADSHEET_ID }}|g" config.js
+          sed -i "s|__FOOTBALL_API_TOKEN__|${{ secrets.FOOTBALL_API_TOKEN }}|g" config.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

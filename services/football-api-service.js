@@ -2,68 +2,59 @@ import CONFIG from '../config.js';
 
 /**
  * @typedef {Object} MatchResult
- * @property {number} id - ID da partida na API
+ * @property {number} id - ID da partida
  * @property {string} homeTeam - Time mandante
  * @property {string} awayTeam - Time visitante
- * @property {number|null} homeScore - Gols mandante (null se não finalizada)
- * @property {number|null} awayScore - Gols visitante (null se não finalizada)
- * @property {string} status - "FINISHED", "IN_PLAY", "SCHEDULED", etc.
- * @property {string} utcDate - Data/hora da partida em UTC
- * @property {number} matchday - Rodada da partida
+ * @property {number|null} homeScore - Gols mandante
+ * @property {number|null} awayScore - Gols visitante
+ * @property {string} status - "FINISHED", "IN_PLAY", "TIMED", etc.
+ * @property {string} utcDate - Data/hora em UTC
+ * @property {number} matchday - Rodada
  */
 
 /**
- * Wrapper para chamadas de API com retry e timeout.
- * @param {string} url
- * @param {RequestInit} options
- * @param {number} maxRetries
- * @returns {Promise<any>}
- */
-async function fetchWithRetry(url, options, maxRetries = 2) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeout);
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      if (attempt === maxRetries) throw error;
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-    }
-  }
-}
-
-/**
- * Serviço responsável por buscar os resultados das partidas da Copa do Mundo
- * via football-data.org API v4.
+ * Serviço de resultados das partidas.
+ * Fonte principal: results.json (atualizado pela GitHub Action).
+ * Fallback: API football-data.org via proxy CORS.
  */
 class FootballApiService {
-  /**
-   * @param {string} apiToken - Token de autenticação da football-data.org
-   */
   constructor(apiToken) {
     this.apiToken = apiToken;
   }
 
   /**
-   * Busca todas as partidas da Copa do Mundo.
-   * Usa proxy CORS para contornar restrição de chamadas client-side.
+   * Busca as partidas. Tenta results.json primeiro (rápido), fallback para API.
    * @returns {Promise<MatchResult[]>}
    */
   async fetchMatches() {
-    const targetUrl = `https://api.football-data.org/v4/competitions/${CONFIG.COMPETITION_CODE}/matches`;
-    const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
-    const options = {
-      headers: {
-        'X-Auth-Token': this.apiToken,
-      },
-    };
+    // Fonte principal: results.json local (atualizado pela Action)
+    try {
+      const response = await fetch('./results.json');
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      }
+    } catch {
+      // Fallback para API
+    }
 
-    const data = await fetchWithRetry(proxyUrl, options);
-    return this._parseMatchesResponse(data);
+    // Fallback: API via proxy CORS
+    try {
+      const targetUrl = `https://api.football-data.org/v4/competitions/${CONFIG.COMPETITION_CODE}/matches`;
+      const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
+      const response = await fetch(proxyUrl, {
+        headers: { 'X-Auth-Token': this.apiToken },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      return this._parseMatchesResponse(data);
+    } catch {
+      throw new Error('Não foi possível obter os resultados das partidas.');
+    }
   }
 
   /**
@@ -72,18 +63,16 @@ class FootballApiService {
    * @returns {MatchResult[]}
    */
   getFinishedMatches(matches) {
-    return matches.filter(match => match.status === 'FINISHED');
+    return matches.filter(m => m.status === 'FINISHED' && m.homeScore !== null && m.awayScore !== null);
   }
 
   /**
-   * Transforma a resposta da API em MatchResult[].
-   * @param {Object} data - Resposta da API football-data.org
+   * Transforma resposta da API em MatchResult[].
+   * @param {Object} data
    * @returns {MatchResult[]}
    */
   _parseMatchesResponse(data) {
-    if (!data || !Array.isArray(data.matches)) {
-      return [];
-    }
+    if (!data || !Array.isArray(data.matches)) return [];
 
     return data.matches.map(match => ({
       id: match.id,
@@ -98,4 +87,4 @@ class FootballApiService {
   }
 }
 
-export { FootballApiService, fetchWithRetry };
+export { FootballApiService };
