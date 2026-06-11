@@ -114,6 +114,14 @@ export class UIRenderer {
     table.appendChild(tbody);
     this.rankingTable.innerHTML = '';
     this.rankingTable.appendChild(table);
+
+    // Botão de compartilhar ranking como imagem
+    const shareBtn = document.createElement('button');
+    shareBtn.classList.add('share-btn');
+    shareBtn.textContent = '📷 Compartilhar Ranking';
+    shareBtn.addEventListener('click', () => this._shareRankingAsImage());
+    this.rankingTable.appendChild(shareBtn);
+
     this.rankingSection.hidden = false;
   }
 
@@ -310,5 +318,71 @@ export class UIRenderer {
       'FINISHED': 'Finalizada'
     };
     return labels[status] || status;
+  }
+
+  /**
+   * Gera imagem PNG do ranking e oferece para download/compartilhamento.
+   */
+  async _shareRankingAsImage() {
+    const table = this.rankingTable.querySelector('.ranking-table');
+    if (!table) return;
+
+    // Carrega html2canvas dinamicamente
+    if (!window.html2canvas) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      document.head.appendChild(script);
+      await new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = reject;
+      });
+    }
+
+    // Cria container temporário com estilo para a imagem
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'padding: 20px; background: #f8f9fa; width: fit-content;';
+    wrapper.innerHTML = `
+      <div style="background: #1a5276; color: white; padding: 12px 20px; border-radius: 8px 8px 0 0; text-align: center;">
+        <strong>⚽ Bolão Copa do Mundo 2026</strong>
+        <div style="font-size: 12px; opacity: 0.8; margin-top: 4px;">${new Date().toLocaleDateString('pt-BR')}</div>
+      </div>
+    `;
+    const tableClone = table.cloneNode(true);
+    tableClone.style.borderRadius = '0 0 8px 8px';
+    wrapper.appendChild(tableClone);
+    document.body.appendChild(wrapper);
+
+    try {
+      const canvas = await window.html2canvas(wrapper, { scale: 2, backgroundColor: '#f8f9fa' });
+      document.body.removeChild(wrapper);
+
+      // Tenta usar a Web Share API (mobile)
+      if (navigator.share && navigator.canShare) {
+        canvas.toBlob(async (blob) => {
+          const file = new File([blob], 'ranking-bolao.png', { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'Ranking Bolão Copa do Mundo' });
+          } else {
+            this._downloadCanvas(canvas);
+          }
+        });
+      } else {
+        this._downloadCanvas(canvas);
+      }
+    } catch {
+      document.body.removeChild(wrapper);
+      alert('Erro ao gerar imagem. Tente novamente.');
+    }
+  }
+
+  /**
+   * Faz download do canvas como PNG.
+   * @param {HTMLCanvasElement} canvas
+   */
+  _downloadCanvas(canvas) {
+    const link = document.createElement('a');
+    link.download = 'ranking-bolao.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
   }
 }
