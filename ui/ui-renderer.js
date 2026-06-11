@@ -69,7 +69,7 @@ export class UIRenderer {
         <th scope="col">Participante</th>
         <th scope="col">Pts</th>
         <th scope="col">Exatos</th>
-        <th scope="col">Vencedor</th>
+        <th scope="col">Campeão</th>
       </tr>
     `;
     table.appendChild(thead);
@@ -95,7 +95,7 @@ export class UIRenderer {
         <td class="ranking-name">${this._escapeHtml(participant.name)}</td>
         <td class="ranking-score">${participant.totalPoints}</td>
         <td class="ranking-exact">${participant.exactPredictions}</td>
-        <td class="ranking-winner">${participant.winnerPredictions}</td>
+        <td class="ranking-champion">${participant.championPick ? this._escapeHtml(participant.championPick) : '-'}</td>
       `;
 
       row.addEventListener('click', () => {

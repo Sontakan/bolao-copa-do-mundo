@@ -199,8 +199,13 @@ section h2 {
   text-align: center;
 }
 
-.ranking-exact,
-.ranking-winner {
+.ranking-exact {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.ranking-champion {
   text-align: center;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
