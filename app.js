@@ -64,6 +64,14 @@ async function main() {
     predictions = getCachedData(CACHE_KEYS.PREDICTIONS);
   }
 
+  // Busca campeões escolhidos
+  let championPicks = new Map();
+  try {
+    championPicks = await sheetsService.fetchChampionPicks();
+  } catch {
+    // Se falhar, segue sem campeões
+  }
+
   // Busca partidas com fallback para cache
   try {
     matches = await footballService.fetchMatches();
@@ -100,7 +108,7 @@ async function main() {
 
     if (predictions) {
       // Temos ambos — calcula ranking completo
-      const ranking = rankingEngine.calculateRanking(predictions, finishedMatches);
+      const ranking = rankingEngine.calculateRanking(predictions, finishedMatches, championPicks, null);
       ui.renderRanking(ranking);
 
       if (finishedMatches.length === 0) {
@@ -111,7 +119,7 @@ async function main() {
     ui.renderMatchList(matches);
   } else if (predictions) {
     // Temos palpites mas não temos partidas — mostra ranking zerado
-    const ranking = rankingEngine.calculateRanking(predictions, []);
+    const ranking = rankingEngine.calculateRanking(predictions, [], championPicks, null);
     ui.renderRanking(ranking);
     ui.renderError(
       'Não foi possível obter os resultados das partidas. Tente novamente mais tarde.'

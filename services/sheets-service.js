@@ -110,6 +110,43 @@ class SheetsService {
   }
 
   /**
+   * Busca o campeão escolhido por cada participante.
+   * O campeão fica na linha que contém "Campeão" na coluna A, e o valor na coluna D (índice 3).
+   * @returns {Promise<Map<string, string>>} Mapa participante -> campeão escolhido
+   */
+  async fetchChampionPicks() {
+    const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}`;
+    const metaUrl = `${baseUrl}?fields=sheets.properties.title&key=${this.apiKey}`;
+    const meta = await fetchWithRetry(metaUrl);
+
+    const championPicks = new Map();
+    const ignoredTabs = ['Seleções', 'seleções', 'Instruções', 'instruções'];
+
+    for (const sheet of meta.sheets) {
+      const sheetTitle = sheet.properties.title;
+      if (ignoredTabs.includes(sheetTitle)) continue;
+
+      const sheetUrl = `${baseUrl}/values/${encodeURIComponent(sheetTitle)}?key=${this.apiKey}`;
+
+      try {
+        const sheetData = await fetchWithRetry(sheetUrl);
+        if (!sheetData || !sheetData.values) continue;
+
+        for (const row of sheetData.values) {
+          if (row && row[0] && row[0].toLowerCase().includes('campeão') && row[3]) {
+            championPicks.set(sheetTitle, row[3].trim());
+            break;
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return championPicks;
+  }
+
+  /**
    * Normaliza os dados brutos da API (formato aba única com coluna de participante)
    * em Prediction[].
    * Espera que a primeira linha seja o cabeçalho e as subsequentes sejam dados.

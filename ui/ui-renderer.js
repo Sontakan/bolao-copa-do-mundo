@@ -67,7 +67,9 @@ export class UIRenderer {
       <tr>
         <th scope="col">#</th>
         <th scope="col">Participante</th>
-        <th scope="col">Acertos</th>
+        <th scope="col">Pts</th>
+        <th scope="col">Exatos</th>
+        <th scope="col">Vencedor</th>
       </tr>
     `;
     table.appendChild(thead);
@@ -77,8 +79,7 @@ export class UIRenderer {
     let position = 1;
     for (let i = 0; i < ranking.length; i++) {
       const participant = ranking[i];
-      // Calculate position: same position for tied participants
-      if (i > 0 && participant.correctPredictions < ranking[i - 1].correctPredictions) {
+      if (i > 0 && participant.totalPoints < ranking[i - 1].totalPoints) {
         position = i + 1;
       }
 
@@ -92,7 +93,9 @@ export class UIRenderer {
       row.innerHTML = `
         <td class="ranking-position">${position}</td>
         <td class="ranking-name">${this._escapeHtml(participant.name)}</td>
-        <td class="ranking-score">${participant.correctPredictions}</td>
+        <td class="ranking-score">${participant.totalPoints}</td>
+        <td class="ranking-exact">${participant.exactPredictions}</td>
+        <td class="ranking-winner">${participant.winnerPredictions}</td>
       `;
 
       row.addEventListener('click', () => {
@@ -121,12 +124,18 @@ export class UIRenderer {
   renderParticipantDetails(participant) {
     const header = document.createElement('div');
     header.classList.add('details-header');
+
+    const championInfo = participant.championPick
+      ? `<p class="details-champion">🏆 Campeão: ${this._escapeHtml(participant.championPick)} ${participant.championPoints > 0 ? '(+10 pts ✅)' : ''}</p>`
+      : '';
+
     header.innerHTML = `
       <h3>${this._escapeHtml(participant.name)}</h3>
       <p class="details-summary">
-        <strong>${participant.correctPredictions}</strong> acerto${participant.correctPredictions !== 1 ? 's' : ''} 
-        de ${participant.totalPredictions} palpite${participant.totalPredictions !== 1 ? 's' : ''}
+        <strong>${participant.totalPoints}</strong> ponto${participant.totalPoints !== 1 ? 's' : ''} 
+        — ${participant.exactPredictions} placar exato, ${participant.winnerPredictions} vencedor
       </p>
+      ${championInfo}
     `;
 
     const list = document.createElement('ul');
@@ -137,19 +146,32 @@ export class UIRenderer {
       const item = document.createElement('li');
       item.classList.add('prediction-item');
 
-      const isFinished = detail.actualHome !== null && detail.actualAway !== null;
+      const isPending = detail.pointType === 'pending';
 
-      if (isFinished) {
-        item.classList.add(detail.isCorrect ? 'prediction-correct' : 'prediction-wrong');
+      if (!isPending) {
+        if (detail.pointType === 'exact') item.classList.add('prediction-correct');
+        else if (detail.pointType === 'winner') item.classList.add('prediction-partial');
+        else item.classList.add('prediction-wrong');
       } else {
         item.classList.add('prediction-pending');
       }
 
-      const indicator = isFinished
-        ? (detail.isCorrect ? '✅' : '❌')
-        : '⏳';
+      const indicators = {
+        'exact': '✅',
+        'winner': '🟡',
+        'miss': '❌',
+        'pending': '⏳',
+      };
+      const indicator = indicators[detail.pointType] || '⏳';
 
-      const actualScore = isFinished
+      const pointsLabel = {
+        'exact': '+5',
+        'winner': '+3',
+        'miss': '0',
+        'pending': '-',
+      };
+
+      const actualScore = !isPending
         ? `${detail.actualHome} x ${detail.actualAway}`
         : 'Aguardando';
 
@@ -158,7 +180,8 @@ export class UIRenderer {
         <span class="prediction-match">${this._escapeHtml(detail.homeTeam)} vs ${this._escapeHtml(detail.awayTeam)}</span>
         <span class="prediction-score">Palpite: ${detail.predictedHome} x ${detail.predictedAway}</span>
         <span class="prediction-actual">Real: ${actualScore}</span>
-        <span class="sr-only">${isFinished ? (detail.isCorrect ? 'Acerto' : 'Erro') : 'Pendente'}</span>
+        <span class="prediction-points">${pointsLabel[detail.pointType]}</span>
+        <span class="sr-only">${detail.pointType === 'exact' ? 'Placar exato' : detail.pointType === 'winner' ? 'Acertou vencedor' : detail.pointType === 'miss' ? 'Errou' : 'Pendente'}</span>
       `;
 
       list.appendChild(item);

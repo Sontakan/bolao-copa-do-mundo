@@ -6,17 +6,36 @@
  * @property {number} predictedAway
  * @property {number|null} actualHome
  * @property {number|null} actualAway
- * @property {boolean} isCorrect
+ * @property {number} points - Pontos ganhos nesse palpite (0, 3 ou 5)
+ * @property {string} pointType - 'exact', 'winner', 'miss' ou 'pending'
  * @property {string} matchStatus
  */
 
 /**
  * @typedef {Object} ParticipantScore
  * @property {string} name - Nome do participante
- * @property {number} correctPredictions - Quantidade de acertos
+ * @property {number} totalPoints - Pontuação total
+ * @property {number} exactPredictions - Quantidade de placares exatos (5pts)
+ * @property {number} winnerPredictions - Quantidade de acertos de vencedor (3pts)
+ * @property {number} championPoints - Pontos do campeão (0 ou 10)
+ * @property {string|null} championPick - Campeão escolhido pelo participante
  * @property {number} totalPredictions - Total de palpites válidos
  * @property {PredictionDetail[]} details - Detalhes de cada palpite
  */
+
+/**
+ * Pontuação do bolão:
+ * - Placar exato: 5 pontos
+ * - Acertou vencedor/empate mas errou placar: 3 pontos
+ * - Acertou o campeão: 10 pontos
+ * - Errou resultado: 0 pontos
+ */
+const POINTS = {
+  EXACT: 5,
+  WINNER: 3,
+  CHAMPION: 10,
+  MISS: 0,
+};
 
 /**
  * Mapeamento de nomes de times em PT-BR (planilha) para inglês (API football-data.org).
@@ -80,13 +99,14 @@ const TEAM_NAME_MAP = {
 class RankingEngine {
   /**
    * Calcula o ranking completo comparando palpites com resultados de partidas.
-   * Apenas partidas com status "FINISHED" são consideradas para contabilizar acertos.
    *
    * @param {import('../services/sheets-service.js').Prediction[]} predictions - Lista de palpites
    * @param {import('../services/football-api-service.js').MatchResult[]} matches - Lista de partidas
+   * @param {Map<string, string>} [championPicks] - Mapa de participante -> campeão escolhido
+   * @param {string|null} [actualChampion] - Campeão real (null se copa não acabou)
    * @returns {ParticipantScore[]} Ranking ordenado
    */
-  calculateRanking(predictions, matches) {
+  calculateRanking(predictions, matches, championPicks = new Map(), actualChampion = null) {
     // Agrupa palpites por participante
     const participantMap = new Map();
 
@@ -102,7 +122,9 @@ class RankingEngine {
     const scores = [];
 
     for (const [name, participantPredictions] of participantMap) {
-      let correctPredictions = 0;
+      let totalPoints = 0;
+      let exactPredictions = 0;
+      let winnerPredictions = 0;
       const details = [];
 
       for (const prediction of participantPredictions) {
@@ -115,11 +137,12 @@ class RankingEngine {
           m => m.homeTeam === normalizedHome && m.awayTeam === normalizedAway
         );
 
-        if (match) {
-          const isCorrect = this._isExactMatch(prediction, match);
-          if (isCorrect) {
-            correctPredictions++;
-          }
+        if (match && match.status === 'FINISHED' && match.homeScore !== null && match.awayScore !== null) {
+          const result = this._calculatePoints(prediction, match);
+          totalPoints += result.points;
+
+          if (result.pointType === 'exact') exactPredictions++;
+          if (result.pointType === 'winner') winnerPredictions++;
 
           details.push({
             homeTeam: prediction.homeTeam,
@@ -128,27 +151,43 @@ class RankingEngine {
             predictedAway: prediction.awayScore,
             actualHome: match.homeScore,
             actualAway: match.awayScore,
-            isCorrect,
+            points: result.points,
+            pointType: result.pointType,
             matchStatus: match.status,
           });
         } else {
-          // Partida não encontrada nos resultados
           details.push({
             homeTeam: prediction.homeTeam,
             awayTeam: prediction.awayTeam,
             predictedHome: prediction.homeScore,
             predictedAway: prediction.awayScore,
-            actualHome: null,
-            actualAway: null,
-            isCorrect: false,
-            matchStatus: 'UNKNOWN',
+            actualHome: match ? match.homeScore : null,
+            actualAway: match ? match.awayScore : null,
+            points: 0,
+            pointType: 'pending',
+            matchStatus: match ? match.status : 'UNKNOWN',
           });
+        }
+      }
+
+      // Pontuação do campeão
+      let championPoints = 0;
+      const championPick = championPicks.get(name) || null;
+      if (actualChampion && championPick) {
+        const normalizedPick = TEAM_NAME_MAP[championPick] || championPick;
+        if (normalizedPick === actualChampion) {
+          championPoints = POINTS.CHAMPION;
+          totalPoints += championPoints;
         }
       }
 
       scores.push({
         name,
-        correctPredictions,
+        totalPoints,
+        exactPredictions,
+        winnerPredictions,
+        championPoints,
+        championPick,
         totalPredictions: participantPredictions.length,
         details,
       });
@@ -158,49 +197,52 @@ class RankingEngine {
   }
 
   /**
-   * Compara um palpite individual com o resultado da partida.
-   * Um acerto ocorre quando o placar previsto é exatamente igual ao placar final
-   * e a partida está finalizada.
+   * Calcula pontos de um palpite individual.
+   * - Placar exato: 5 pontos
+   * - Acertou vencedor/empate: 3 pontos
+   * - Errou: 0 pontos
    *
-   * @param {import('../services/sheets-service.js').Prediction} prediction - Palpite do participante
-   * @param {import('../services/football-api-service.js').MatchResult} match - Resultado da partida
-   * @returns {boolean} true se o palpite acertou o placar exato
+   * @param {import('../services/sheets-service.js').Prediction} prediction
+   * @param {import('../services/football-api-service.js').MatchResult} match
+   * @returns {{points: number, pointType: string}}
    */
-  _isExactMatch(prediction, match) {
-    // Só conta acerto se a partida estiver finalizada
-    if (match.status !== 'FINISHED') {
-      return false;
+  _calculatePoints(prediction, match) {
+    // Placar exato
+    if (prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore) {
+      return { points: POINTS.EXACT, pointType: 'exact' };
     }
 
-    // Scores devem ser não-nulos para comparação
-    if (match.homeScore === null || match.awayScore === null) {
-      return false;
+    // Acertou o vencedor ou empate
+    const predictedResult = Math.sign(prediction.homeScore - prediction.awayScore);
+    const actualResult = Math.sign(match.homeScore - match.awayScore);
+
+    if (predictedResult === actualResult) {
+      return { points: POINTS.WINNER, pointType: 'winner' };
     }
 
-    return (
-      prediction.homeScore === match.homeScore &&
-      prediction.awayScore === match.awayScore
-    );
+    return { points: POINTS.MISS, pointType: 'miss' };
   }
 
   /**
    * Ordena os participantes no ranking:
-   * 1. Decrescente por quantidade de acertos (correctPredictions)
-   * 2. Em caso de empate, ordem alfabética pelo nome
+   * 1. Decrescente por pontuação total
+   * 2. Desempate: mais placares exatos
+   * 3. Desempate: ordem alfabética
    *
-   * @param {ParticipantScore[]} scores - Lista de scores a ordenar
-   * @returns {ParticipantScore[]} Lista ordenada
+   * @param {ParticipantScore[]} scores
+   * @returns {ParticipantScore[]}
    */
   _sortRanking(scores) {
     return [...scores].sort((a, b) => {
-      // Primeiro critério: mais acertos primeiro (decrescente)
-      if (b.correctPredictions !== a.correctPredictions) {
-        return b.correctPredictions - a.correctPredictions;
+      if (b.totalPoints !== a.totalPoints) {
+        return b.totalPoints - a.totalPoints;
       }
-      // Segundo critério: ordem alfabética pelo nome (crescente)
+      if (b.exactPredictions !== a.exactPredictions) {
+        return b.exactPredictions - a.exactPredictions;
+      }
       return a.name.localeCompare(b.name);
     });
   }
 }
 
-export { RankingEngine };
+export { RankingEngine, POINTS, TEAM_NAME_MAP };
