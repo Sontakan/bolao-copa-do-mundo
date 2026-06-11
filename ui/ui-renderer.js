@@ -151,6 +151,7 @@ export class UIRenderer {
       if (!isPending) {
         if (detail.pointType === 'exact') item.classList.add('prediction-correct');
         else if (detail.pointType === 'winner') item.classList.add('prediction-partial');
+        else if (detail.pointType === 'one_score') item.classList.add('prediction-one-score');
         else item.classList.add('prediction-wrong');
       } else {
         item.classList.add('prediction-pending');
@@ -159,6 +160,7 @@ export class UIRenderer {
       const indicators = {
         'exact': '✅',
         'winner': '🟡',
+        'one_score': '🔵',
         'miss': '❌',
         'pending': '⏳',
       };
@@ -167,6 +169,7 @@ export class UIRenderer {
       const pointsLabel = {
         'exact': '+5',
         'winner': '+3',
+        'one_score': '+1',
         'miss': '0',
         'pending': '-',
       };
@@ -181,7 +184,7 @@ export class UIRenderer {
         <span class="prediction-score">Palpite: ${detail.predictedHome} x ${detail.predictedAway}</span>
         <span class="prediction-actual">Real: ${actualScore}</span>
         <span class="prediction-points">${pointsLabel[detail.pointType]}</span>
-        <span class="sr-only">${detail.pointType === 'exact' ? 'Placar exato' : detail.pointType === 'winner' ? 'Acertou vencedor' : detail.pointType === 'miss' ? 'Errou' : 'Pendente'}</span>
+        <span class="sr-only">${detail.pointType === 'exact' ? 'Placar exato' : detail.pointType === 'winner' ? 'Acertou vencedor' : detail.pointType === 'one_score' ? 'Acertou gols de um time' : detail.pointType === 'miss' ? 'Errou' : 'Pendente'}</span>
       `;
 
       list.appendChild(item);

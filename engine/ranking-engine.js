@@ -27,12 +27,14 @@
  * Pontuação do bolão:
  * - Placar exato: 5 pontos
  * - Acertou vencedor/empate mas errou placar: 3 pontos
+ * - Acertou gols de um time (mas não o placar exato nem vencedor): 1 ponto
  * - Acertou o campeão: 10 pontos
  * - Errou resultado: 0 pontos
  */
 const POINTS = {
   EXACT: 5,
   WINNER: 3,
+  ONE_SCORE: 1,
   CHAMPION: 10,
   MISS: 0,
 };
@@ -200,6 +202,7 @@ class RankingEngine {
    * Calcula pontos de um palpite individual.
    * - Placar exato: 5 pontos
    * - Acertou vencedor/empate: 3 pontos
+   * - Acertou gols de um time: 1 ponto
    * - Errou: 0 pontos
    *
    * @param {import('../services/sheets-service.js').Prediction} prediction
@@ -218,6 +221,11 @@ class RankingEngine {
 
     if (predictedResult === actualResult) {
       return { points: POINTS.WINNER, pointType: 'winner' };
+    }
+
+    // Acertou gols de pelo menos um time
+    if (prediction.homeScore === match.homeScore || prediction.awayScore === match.awayScore) {
+      return { points: POINTS.ONE_SCORE, pointType: 'one_score' };
     }
 
     return { points: POINTS.MISS, pointType: 'miss' };

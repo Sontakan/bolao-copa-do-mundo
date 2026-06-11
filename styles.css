@@ -271,6 +271,10 @@ section h2 {
   border-left: 4px solid var(--color-warning);
 }
 
+.prediction-one-score {
+  border-left: 4px solid var(--color-primary-light);
+}
+
 .prediction-wrong {
   border-left: 4px solid var(--color-error);
 }
