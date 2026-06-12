@@ -13,9 +13,9 @@
     "id": "760414",
     "homeTeam": "South Korea",
     "awayTeam": "Czechia",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 2,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-06-12T02:00Z",
     "matchday": 0
   },
