@@ -31,11 +31,6 @@
       <div id="ranking-table"></div>
     </section>
 
-    <section id="participant-details" hidden>
-      <h2>Detalhes do Participante</h2>
-      <div id="details-content"></div>
-    </section>
-
     <section id="match-list" hidden>
       <h2>Partidas</h2>
       <div id="matches-content"></div>
@@ -45,6 +40,15 @@
   <footer>
     <p>Bolão Copa do Mundo &copy; 2026</p>
   </footer>
+
+  <!-- Modal -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" aria-label="Fechar">&times;</button>
+      <div class="modal-body"></div>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>

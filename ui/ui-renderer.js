@@ -43,10 +43,14 @@ export class UIRenderer {
     this.errorEl = document.getElementById('error');
     this.rankingSection = document.getElementById('ranking');
     this.rankingTable = document.getElementById('ranking-table');
-    this.detailsSection = document.getElementById('participant-details');
-    this.detailsContent = document.getElementById('details-content');
     this.matchListSection = document.getElementById('match-list');
     this.matchesContent = document.getElementById('matches-content');
+
+    // Modal
+    this.modal = document.getElementById('modal');
+    this.modalBody = this.modal.querySelector('.modal-body');
+    this.modal.querySelector('.modal-close').addEventListener('click', () => this._closeModal());
+    this.modal.querySelector('.modal-backdrop').addEventListener('click', () => this._closeModal());
   }
 
   /**
@@ -126,82 +130,55 @@ export class UIRenderer {
   }
 
   /**
-   * Renderiza os detalhes de um participante selecionado.
+   * Renderiza os detalhes de um participante selecionado (em modal).
    * @param {ParticipantScore} participant
    */
   renderParticipantDetails(participant) {
-    const header = document.createElement('div');
-    header.classList.add('details-header');
-
     const championInfo = participant.championPick
       ? `<p class="details-champion">🏆 Campeão: ${this._escapeHtml(participant.championPick)} ${participant.championPoints > 0 ? '(+10 pts ✅)' : ''}</p>`
       : '';
 
-    header.innerHTML = `
+    let html = `
       <h3>${this._escapeHtml(participant.name)}</h3>
       <p class="details-summary">
         <strong>${participant.totalPoints}</strong> ponto${participant.totalPoints !== 1 ? 's' : ''} 
         — ${participant.exactPredictions} placar exato, ${participant.winnerPredictions} acertos parciais
       </p>
       ${championInfo}
+      <ul class="predictions-list">
     `;
 
-    const list = document.createElement('ul');
-    list.classList.add('predictions-list');
-    list.setAttribute('aria-label', `Palpites de ${participant.name}`);
-
     for (const detail of participant.details) {
-      const item = document.createElement('li');
-      item.classList.add('prediction-item');
-
       const isPending = detail.pointType === 'pending';
-
+      let cssClass = 'prediction-pending';
       if (!isPending) {
-        if (detail.pointType === 'exact') item.classList.add('prediction-correct');
-        else if (detail.pointType === 'winner') item.classList.add('prediction-partial');
-        else if (detail.pointType === 'one_score') item.classList.add('prediction-one-score');
-        else item.classList.add('prediction-wrong');
-      } else {
-        item.classList.add('prediction-pending');
+        if (detail.pointType === 'exact') cssClass = 'prediction-correct';
+        else if (detail.pointType === 'winner') cssClass = 'prediction-partial';
+        else if (detail.pointType === 'one_score') cssClass = 'prediction-one-score';
+        else cssClass = 'prediction-wrong';
       }
 
-      const indicators = {
-        'exact': '✅',
-        'winner': '🟡',
-        'one_score': '🔵',
-        'miss': '❌',
-        'pending': '⏳',
-      };
+      const indicators = { 'exact': '✅', 'winner': '🟡', 'one_score': '🔵', 'miss': '❌', 'pending': '⏳' };
       const indicator = indicators[detail.pointType] || '⏳';
-
-      const pointsLabel = {
-        'exact': '+5',
-        'winner': '+3',
-        'one_score': '+1',
-        'miss': '0',
-        'pending': '-',
-      };
+      const pointsLabel = { 'exact': '+5', 'winner': '+3', 'one_score': '+1', 'miss': '0', 'pending': '-' };
 
       const actualScore = !isPending
         ? `${detail.actualHome} x ${detail.actualAway}`
         : 'Aguardando';
 
-      item.innerHTML = `
-        <span class="prediction-indicator" aria-hidden="true">${indicator}</span>
-        <span class="prediction-match">${this._escapeHtml(detail.homeTeam)} vs ${this._escapeHtml(detail.awayTeam)}</span>
-        <span class="prediction-score">Palpite: ${detail.predictedHome} x ${detail.predictedAway}</span>
-        <span class="prediction-actual">Real: ${actualScore}</span>
-        <span class="prediction-points">${pointsLabel[detail.pointType]}</span>
-        <span class="sr-only">${detail.pointType === 'exact' ? 'Placar exato' : detail.pointType === 'winner' ? 'Acertou vencedor' : detail.pointType === 'one_score' ? 'Acertou gols de um time' : detail.pointType === 'miss' ? 'Errou' : 'Pendente'}</span>
+      html += `
+        <li class="prediction-item ${cssClass}">
+          <span class="prediction-indicator" aria-hidden="true">${indicator}</span>
+          <span class="prediction-match">${this._escapeHtml(detail.homeTeam)} vs ${this._escapeHtml(detail.awayTeam)}</span>
+          <span class="prediction-score">Palpite: ${detail.predictedHome} x ${detail.predictedAway}</span>
+          <span class="prediction-actual">Real: ${actualScore}</span>
+          <span class="prediction-points">${pointsLabel[detail.pointType]}</span>
+        </li>
       `;
-
-      list.appendChild(item);
     }
 
-    this.detailsContent.innerHTML = '';
-    this.detailsContent.appendChild(header);
-    this.detailsContent.appendChild(list);
-    this.detailsSection.hidden = false;
+    html += '</ul>';
+    this._openModal(html);
   }
 
   /**
@@ -301,94 +278,64 @@ export class UIRenderer {
   _showMatchPredictions(match) {
     if (!this._predictions || this._predictions.length === 0) return;
 
-    // Importa o mapa de nomes para fazer o match
-    const TEAM_NAME_MAP_REVERSE = {};
-    // Cria mapa reverso: inglês -> português
     const predictions = this._predictions;
 
     // Busca palpites que correspondem a essa partida
-    const matchPredictions = predictions.filter(p => {
-      // Compara diretamente (nomes em PT-BR na planilha vs inglês na API)
-      return (p.homeTeam === match.homeTeam && p.awayTeam === match.awayTeam) ||
-             (p.homeTeam === match.homeTeam) && (p.awayTeam === match.awayTeam);
-    });
-
-    // Se não encontrou, tenta buscar com nomes traduzidos
-    if (matchPredictions.length === 0) {
-      for (const p of predictions) {
-        // Verifica se alguma tradução bate
-        const homeMatches = p.homeTeam === match.homeTeam ||
-          this._normalizeTeamName(p.homeTeam) === match.homeTeam;
-        const awayMatches = p.awayTeam === match.awayTeam ||
-          this._normalizeTeamName(p.awayTeam) === match.awayTeam;
-        if (homeMatches && awayMatches) {
-          matchPredictions.push(p);
-        }
+    const matchPredictions = [];
+    for (const p of predictions) {
+      const homeMatches = p.homeTeam === match.homeTeam ||
+        this._normalizeTeamName(p.homeTeam) === match.homeTeam;
+      const awayMatches = p.awayTeam === match.awayTeam ||
+        this._normalizeTeamName(p.awayTeam) === match.awayTeam;
+      if (homeMatches && awayMatches) {
+        matchPredictions.push(p);
       }
     }
-
-    // Renderiza no painel de detalhes
-    const header = document.createElement('div');
-    header.classList.add('details-header');
 
     const isFinished = match.status === 'FINISHED' && match.homeScore !== null;
     const resultText = isFinished ? `Resultado: ${match.homeScore} x ${match.awayScore}` : 'Aguardando resultado';
 
-    header.innerHTML = `
+    let html = `
       <h3>${this._escapeHtml(match.homeTeam)} vs ${this._escapeHtml(match.awayTeam)}</h3>
       <p class="details-summary">${resultText}</p>
+      <ul class="predictions-list">
     `;
 
-    const list = document.createElement('ul');
-    list.classList.add('predictions-list');
-
     if (matchPredictions.length === 0) {
-      const empty = document.createElement('li');
-      empty.classList.add('prediction-item');
-      empty.innerHTML = '<span class="prediction-match">Nenhum palpite encontrado para esta partida</span>';
-      list.appendChild(empty);
+      html += '<li class="prediction-item"><span class="prediction-match">Nenhum palpite encontrado</span></li>';
     } else {
       for (const p of matchPredictions) {
-        const item = document.createElement('li');
-        item.classList.add('prediction-item');
-
         let indicator = '⏳';
         let cssClass = 'prediction-pending';
 
         if (isFinished) {
           if (p.homeScore === match.homeScore && p.awayScore === match.awayScore) {
-            indicator = '✅';
-            cssClass = 'prediction-correct';
+            indicator = '✅'; cssClass = 'prediction-correct';
           } else {
             const predResult = Math.sign(p.homeScore - p.awayScore);
             const actResult = Math.sign(match.homeScore - match.awayScore);
             if (predResult === actResult) {
-              indicator = '🟡';
-              cssClass = 'prediction-partial';
+              indicator = '🟡'; cssClass = 'prediction-partial';
             } else if (p.homeScore === match.homeScore || p.awayScore === match.awayScore) {
-              indicator = '🔵';
-              cssClass = 'prediction-one-score';
+              indicator = '🔵'; cssClass = 'prediction-one-score';
             } else {
-              indicator = '❌';
-              cssClass = 'prediction-wrong';
+              indicator = '❌'; cssClass = 'prediction-wrong';
             }
           }
         }
 
-        item.classList.add(cssClass);
-        item.innerHTML = `
-          <span class="prediction-indicator" aria-hidden="true">${indicator}</span>
-          <span class="prediction-match">${this._escapeHtml(p.participantName)}</span>
-          <span class="prediction-score">${p.homeScore} x ${p.awayScore}</span>
+        html += `
+          <li class="prediction-item ${cssClass}">
+            <span class="prediction-indicator" aria-hidden="true">${indicator}</span>
+            <span class="prediction-match">${this._escapeHtml(p.participantName)}</span>
+            <span class="prediction-score">${p.homeScore} x ${p.awayScore}</span>
+          </li>
         `;
-        list.appendChild(item);
       }
     }
 
-    this.detailsContent.innerHTML = '';
-    this.detailsContent.appendChild(header);
-    this.detailsContent.appendChild(list);
-    this.detailsSection.hidden = false;
+    html += '</ul>';
+    this._openModal(html);
   }
 
   /**
@@ -430,12 +377,22 @@ export class UIRenderer {
   renderLoading() {
     this._hideError();
     this.rankingSection.hidden = true;
-    this.detailsSection.hidden = true;
     this.matchListSection.hidden = true;
     this.loadingEl.hidden = false;
   }
 
   // --- Private helpers ---
+
+  _openModal(html) {
+    this.modalBody.innerHTML = html;
+    this.modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  _closeModal() {
+    this.modal.hidden = true;
+    document.body.style.overflow = '';
+  }
 
   _hideLoading() {
     this.loadingEl.hidden = true;
