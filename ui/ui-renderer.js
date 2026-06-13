@@ -207,8 +207,10 @@ export class UIRenderer {
   /**
    * Renderiza a lista de partidas com abas (Finalizadas / Próximas).
    * @param {MatchResult[]} matches
+   * @param {Prediction[]|null} predictions
    */
-  renderMatchList(matches) {
+  renderMatchList(matches, predictions = null) {
+    this._predictions = predictions;
     const finished = matches.filter(m => m.status === 'FINISHED' && m.homeScore !== null);
     const upcoming = matches.filter(m => m.status !== 'FINISHED' || m.homeScore === null);
 
@@ -266,6 +268,7 @@ export class UIRenderer {
     for (const match of matches) {
       const item = document.createElement('li');
       item.classList.add('match-item');
+      item.style.cursor = 'pointer';
 
       const isFinished = match.status === 'FINISHED' && match.homeScore !== null;
       const scoreDisplay = isFinished
@@ -280,10 +283,134 @@ export class UIRenderer {
         <span class="match-info">${dateStr}</span>
       `;
 
+      // Ao clicar, mostra palpites de todos para esse jogo
+      if (match.homeTeam && match.awayTeam) {
+        item.addEventListener('click', () => this._showMatchPredictions(match));
+      }
+
       list.appendChild(item);
     }
 
     return list;
+  }
+
+  /**
+   * Mostra os palpites de todos os participantes para uma partida.
+   * @param {MatchResult} match
+   */
+  _showMatchPredictions(match) {
+    if (!this._predictions || this._predictions.length === 0) return;
+
+    // Importa o mapa de nomes para fazer o match
+    const TEAM_NAME_MAP_REVERSE = {};
+    // Cria mapa reverso: inglês -> português
+    const predictions = this._predictions;
+
+    // Busca palpites que correspondem a essa partida
+    const matchPredictions = predictions.filter(p => {
+      // Compara diretamente (nomes em PT-BR na planilha vs inglês na API)
+      return (p.homeTeam === match.homeTeam && p.awayTeam === match.awayTeam) ||
+             (p.homeTeam === match.homeTeam) && (p.awayTeam === match.awayTeam);
+    });
+
+    // Se não encontrou, tenta buscar com nomes traduzidos
+    if (matchPredictions.length === 0) {
+      for (const p of predictions) {
+        // Verifica se alguma tradução bate
+        const homeMatches = p.homeTeam === match.homeTeam ||
+          this._normalizeTeamName(p.homeTeam) === match.homeTeam;
+        const awayMatches = p.awayTeam === match.awayTeam ||
+          this._normalizeTeamName(p.awayTeam) === match.awayTeam;
+        if (homeMatches && awayMatches) {
+          matchPredictions.push(p);
+        }
+      }
+    }
+
+    // Renderiza no painel de detalhes
+    const header = document.createElement('div');
+    header.classList.add('details-header');
+
+    const isFinished = match.status === 'FINISHED' && match.homeScore !== null;
+    const resultText = isFinished ? `Resultado: ${match.homeScore} x ${match.awayScore}` : 'Aguardando resultado';
+
+    header.innerHTML = `
+      <h3>${this._escapeHtml(match.homeTeam)} vs ${this._escapeHtml(match.awayTeam)}</h3>
+      <p class="details-summary">${resultText}</p>
+    `;
+
+    const list = document.createElement('ul');
+    list.classList.add('predictions-list');
+
+    if (matchPredictions.length === 0) {
+      const empty = document.createElement('li');
+      empty.classList.add('prediction-item');
+      empty.innerHTML = '<span class="prediction-match">Nenhum palpite encontrado para esta partida</span>';
+      list.appendChild(empty);
+    } else {
+      for (const p of matchPredictions) {
+        const item = document.createElement('li');
+        item.classList.add('prediction-item');
+
+        let indicator = '⏳';
+        let cssClass = 'prediction-pending';
+
+        if (isFinished) {
+          if (p.homeScore === match.homeScore && p.awayScore === match.awayScore) {
+            indicator = '✅';
+            cssClass = 'prediction-correct';
+          } else {
+            const predResult = Math.sign(p.homeScore - p.awayScore);
+            const actResult = Math.sign(match.homeScore - match.awayScore);
+            if (predResult === actResult) {
+              indicator = '🟡';
+              cssClass = 'prediction-partial';
+            } else if (p.homeScore === match.homeScore || p.awayScore === match.awayScore) {
+              indicator = '🔵';
+              cssClass = 'prediction-one-score';
+            } else {
+              indicator = '❌';
+              cssClass = 'prediction-wrong';
+            }
+          }
+        }
+
+        item.classList.add(cssClass);
+        item.innerHTML = `
+          <span class="prediction-indicator" aria-hidden="true">${indicator}</span>
+          <span class="prediction-match">${this._escapeHtml(p.participantName)}</span>
+          <span class="prediction-score">${p.homeScore} x ${p.awayScore}</span>
+        `;
+        list.appendChild(item);
+      }
+    }
+
+    this.detailsContent.innerHTML = '';
+    this.detailsContent.appendChild(header);
+    this.detailsContent.appendChild(list);
+    this.detailsSection.hidden = false;
+  }
+
+  /**
+   * Normaliza nome de time PT-BR para inglês (para matching).
+   */
+  _normalizeTeamName(name) {
+    const map = {
+      'México': 'Mexico', 'África do Sul': 'South Africa', 'Coreia do Sul': 'South Korea',
+      'República Tcheca': 'Czechia', 'Bósnia': 'Bosnia-Herzegovina', 'Estados Unidos': 'United States',
+      'Suíça': 'Switzerland', 'Escócia': 'Scotland', 'Austrália': 'Australia', 'Alemanha': 'Germany',
+      'Curaçao': 'Curaçao', 'Costa do Marfim': 'Ivory Coast', 'Equador': 'Ecuador',
+      'Holanda': 'Netherlands', 'Japão': 'Japan', 'Suécia': 'Sweden', 'Tunísia': 'Tunisia',
+      'Espanha': 'Spain', 'Cabo Verde': 'Cape Verde Islands', 'Arábia Saudita': 'Saudi Arabia',
+      'Uruguai': 'Uruguay', 'Bélgica': 'Belgium', 'Egito': 'Egypt', 'Irã': 'Iran',
+      'Nova Zelândia': 'New Zealand', 'França': 'France', 'Iraque': 'Iraq', 'Noruega': 'Norway',
+      'Argentina': 'Argentina', 'Argélia': 'Algeria', 'Áustria': 'Austria', 'Jordânia': 'Jordan',
+      'Portugal': 'Portugal', 'RD Congo': 'Congo DR', 'Inglaterra': 'England', 'Croácia': 'Croatia',
+      'Gana': 'Ghana', 'Panamá': 'Panama', 'Uzbequistão': 'Uzbekistan', 'Colômbia': 'Colombia',
+      'Turquia': 'Turkey', 'Paraguai': 'Paraguay', 'Marrocos': 'Morocco', 'Brasil': 'Brazil',
+      'Haiti': 'Haiti', 'Canadá': 'Canada', 'Catar': 'Qatar', 'Senegal': 'Senegal',
+    };
+    return map[name] || name;
   }
 
   /**

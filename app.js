@@ -115,7 +115,7 @@ async function main() {
       }
     }
 
-    ui.renderMatchList(matches);
+    ui.renderMatchList(matches, predictions);
   } else if (predictions) {
     // Temos palpites mas não temos partidas — mostra ranking zerado
     const ranking = rankingEngine.calculateRanking(predictions, [], championPicks, null);
