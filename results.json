@@ -73,9 +73,9 @@
     "id": "760421",
     "homeTeam": "Australia",
     "awayTeam": "Türkiye",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 2,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-06-14T04:00Z",
     "matchday": 0
   },
