@@ -282,12 +282,13 @@ export class UIRenderer {
 
     // Busca palpites que correspondem a essa partida
     const matchPredictions = [];
+    const normalizedMatchHome = this._normalizeTeamName(match.homeTeam);
+    const normalizedMatchAway = this._normalizeTeamName(match.awayTeam);
+
     for (const p of predictions) {
-      const homeMatches = p.homeTeam === match.homeTeam ||
-        this._normalizeTeamName(p.homeTeam) === match.homeTeam;
-      const awayMatches = p.awayTeam === match.awayTeam ||
-        this._normalizeTeamName(p.awayTeam) === match.awayTeam;
-      if (homeMatches && awayMatches) {
+      const normalizedPredHome = this._normalizeTeamName(p.homeTeam);
+      const normalizedPredAway = this._normalizeTeamName(p.awayTeam);
+      if (normalizedPredHome === normalizedMatchHome && normalizedPredAway === normalizedMatchAway) {
         matchPredictions.push(p);
       }
     }
@@ -356,6 +357,7 @@ export class UIRenderer {
       'Gana': 'Ghana', 'Panamá': 'Panama', 'Uzbequistão': 'Uzbekistan', 'Colômbia': 'Colombia',
       'Turquia': 'Turkey', 'Paraguai': 'Paraguay', 'Marrocos': 'Morocco', 'Brasil': 'Brazil',
       'Haiti': 'Haiti', 'Canadá': 'Canada', 'Catar': 'Qatar', 'Senegal': 'Senegal',
+      'Türkiye': 'Turkey',
     };
     return map[name] || name;
   }

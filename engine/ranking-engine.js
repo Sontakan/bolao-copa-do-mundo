@@ -94,6 +94,30 @@ const TEAM_NAME_MAP = {
 };
 
 /**
+ * Nomes alternativos usados pela ESPN que diferem do football-data.org.
+ * Mapeia nome ESPN → nome canônico usado no TEAM_NAME_MAP.
+ */
+const TEAM_ALIASES = {
+  'Türkiye': 'Turkey',
+  'Korea Republic': 'South Korea',
+  'IR Iran': 'Iran',
+  'Congo DR': 'Congo DR',
+  'Cape Verde Islands': 'Cape Verde Islands',
+  'Cabo Verde': 'Cape Verde Islands',
+};
+
+/**
+ * Normaliza nome de time para comparação.
+ */
+function normalizeTeamName(name) {
+  // Primeiro tenta o mapa PT-BR → inglês
+  if (TEAM_NAME_MAP[name]) return TEAM_NAME_MAP[name];
+  // Depois tenta aliases da ESPN
+  if (TEAM_ALIASES[name]) return TEAM_ALIASES[name];
+  return name;
+}
+
+/**
  * Motor de cálculo de ranking do bolão.
  * Compara palpites dos participantes com os resultados reais das partidas
  * e produz um ranking ordenado.
@@ -131,12 +155,12 @@ class RankingEngine {
 
       for (const prediction of participantPredictions) {
         // Normaliza os nomes dos times para o padrão da API
-        const normalizedHome = TEAM_NAME_MAP[prediction.homeTeam] || prediction.homeTeam;
-        const normalizedAway = TEAM_NAME_MAP[prediction.awayTeam] || prediction.awayTeam;
+        const normalizedHome = normalizeTeamName(prediction.homeTeam);
+        const normalizedAway = normalizeTeamName(prediction.awayTeam);
 
         // Encontra a partida correspondente ao palpite
         const match = matches.find(
-          m => m.homeTeam === normalizedHome && m.awayTeam === normalizedAway
+          m => normalizeTeamName(m.homeTeam) === normalizedHome && normalizeTeamName(m.awayTeam) === normalizedAway
         );
 
         if (match && match.status === 'FINISHED' && match.homeScore !== null && match.awayScore !== null) {
