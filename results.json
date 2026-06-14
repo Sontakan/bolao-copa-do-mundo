@@ -63,9 +63,9 @@
     "id": "760418",
     "homeTeam": "Haiti",
     "awayTeam": "Scotland",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 0,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-06-14T01:00Z",
     "matchday": 0
   },
