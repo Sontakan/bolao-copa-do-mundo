@@ -83,9 +83,9 @@
     "id": "760422",
     "homeTeam": "Germany",
     "awayTeam": "Curaçao",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 7,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-06-14T17:00Z",
     "matchday": 0
   },
