@@ -2,7 +2,19 @@ name: Update Match Results
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    # Horários pós-jogo (UTC) = ~2h10 após início de cada partida
+    - cron: '10 18 * * *'   # 15:10 BRT
+    - cron: '10 19 * * *'   # 16:10 BRT
+    - cron: '10 21 * * *'   # 18:10 BRT
+    - cron: '10 22 * * *'   # 19:10 BRT
+    - cron: '10 23 * * *'   # 20:10 BRT
+    - cron: '10 0 * * *'    # 21:10 BRT
+    - cron: '10 1 * * *'    # 22:10 BRT
+    - cron: '10 2 * * *'    # 23:10 BRT
+    - cron: '10 3 * * *'    # 00:10 BRT
+    - cron: '10 4 * * *'    # 01:10 BRT
+    - cron: '10 5 * * *'    # 02:10 BRT
+    - cron: '10 6 * * *'    # 03:10 BRT
   workflow_dispatch:
 
 permissions:

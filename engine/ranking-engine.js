@@ -104,6 +104,7 @@ const TEAM_ALIASES = {
   'Congo DR': 'Congo DR',
   'Cape Verde Islands': 'Cape Verde Islands',
   'Cabo Verde': 'Cape Verde Islands',
+  'Cape Verde': 'Cape Verde Islands',
 };
 
 /**

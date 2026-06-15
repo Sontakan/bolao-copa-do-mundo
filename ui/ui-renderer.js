@@ -358,6 +358,7 @@ export class UIRenderer {
       'Turquia': 'Turkey', 'Paraguai': 'Paraguay', 'Marrocos': 'Morocco', 'Brasil': 'Brazil',
       'Haiti': 'Haiti', 'Canadá': 'Canada', 'Catar': 'Qatar', 'Senegal': 'Senegal',
       'Türkiye': 'Turkey',
+      'Cape Verde': 'Cape Verde Islands',
     };
     return map[name] || name;
   }
