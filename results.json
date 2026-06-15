@@ -113,9 +113,9 @@
     "id": "760424",
     "homeTeam": "Sweden",
     "awayTeam": "Tunisia",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 5,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-06-15T02:00Z",
     "matchday": 0
   },
