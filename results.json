@@ -133,9 +133,9 @@
     "id": "760426",
     "homeTeam": "Belgium",
     "awayTeam": "Egypt",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 1,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-06-15T19:00Z",
     "matchday": 0
   },
