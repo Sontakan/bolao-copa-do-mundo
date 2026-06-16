@@ -153,9 +153,9 @@
     "id": "760427",
     "homeTeam": "Iran",
     "awayTeam": "New Zealand",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 2,
+    "awayScore": 2,
+    "status": "FINISHED",
     "utcDate": "2026-06-16T01:00Z",
     "matchday": 0
   },
