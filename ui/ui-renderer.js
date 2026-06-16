@@ -153,14 +153,14 @@ export class UIRenderer {
       let cssClass = 'prediction-pending';
       if (!isPending) {
         if (detail.pointType === 'exact') cssClass = 'prediction-correct';
-        else if (detail.pointType === 'winner') cssClass = 'prediction-partial';
+        else if (detail.pointType === 'winner' || detail.pointType === 'winner_plus') cssClass = 'prediction-partial';
         else if (detail.pointType === 'one_score') cssClass = 'prediction-one-score';
         else cssClass = 'prediction-wrong';
       }
 
-      const indicators = { 'exact': '✅', 'winner': '🟡', 'one_score': '🔵', 'miss': '❌', 'pending': '⏳' };
+      const indicators = { 'exact': '✅', 'winner': '🟡', 'winner_plus': '🟡', 'one_score': '🔵', 'miss': '❌', 'pending': '⏳' };
       const indicator = indicators[detail.pointType] || '⏳';
-      const pointsLabel = { 'exact': '+5', 'winner': '+3', 'one_score': '+1', 'miss': '0', 'pending': '-' };
+      const pointsLabel = { 'exact': '+5', 'winner': '+3', 'winner_plus': '+4', 'one_score': '+1', 'miss': '0', 'pending': '-' };
 
       const actualScore = !isPending
         ? `${detail.actualHome} x ${detail.actualAway}`
@@ -491,19 +491,28 @@ export class UIRenderer {
       const canvas = await window.html2canvas(wrapper, { scale: 2, backgroundColor: '#f8f9fa' });
       document.body.removeChild(wrapper);
 
-      // Tenta usar a Web Share API (mobile)
-      if (navigator.share && navigator.canShare) {
-        canvas.toBlob(async (blob) => {
-          const file = new File([blob], 'ranking-bolao.png', { type: 'image/png' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: 'Ranking Bolão Copa do Mundo' });
-          } else {
-            this._downloadCanvas(canvas);
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], 'ranking-bolao.png', { type: 'image/png' });
+
+        // Tenta Web Share API (funciona no celular — abre WhatsApp direto)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: 'Ranking Bolão Copa do Mundo',
+              text: '⚽ Ranking atualizado do Bolão Copa do Mundo 2026!'
+            });
+            return;
+          } catch {
+            // Usuário cancelou ou falhou — segue pro fallback
           }
-        });
-      } else {
+        }
+
+        // Fallback desktop: baixa imagem + abre WhatsApp Web
         this._downloadCanvas(canvas);
-      }
+        const text = encodeURIComponent('⚽ Ranking atualizado do Bolão Copa do Mundo 2026! Confira: https://sontakan.github.io/bolao-copa-do-mundo/');
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+      });
     } catch {
       document.body.removeChild(wrapper);
       alert('Erro ao gerar imagem. Tente novamente.');

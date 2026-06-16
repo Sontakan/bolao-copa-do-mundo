@@ -235,25 +235,31 @@ class RankingEngine {
    * @returns {{points: number, pointType: string}}
    */
   _calculatePoints(prediction, match) {
-    // Placar exato (incluindo empates com mesma quantidade de gols)
+    // Placar exato — não acumula
     if (prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore) {
       return { points: POINTS.EXACT, pointType: 'exact' };
     }
 
-    // Acertou o vencedor ou empate (mas errou o placar)
+    let points = 0;
+    let pointType = 'miss';
+
+    // Acertou o vencedor ou empate?
     const predictedResult = Math.sign(prediction.homeScore - prediction.awayScore);
     const actualResult = Math.sign(match.homeScore - match.awayScore);
 
     if (predictedResult === actualResult) {
-      return { points: POINTS.WINNER, pointType: 'winner' };
+      points += POINTS.WINNER;
+      pointType = 'winner';
     }
 
-    // Acertou gols de pelo menos um time
+    // Acertou gols de pelo menos um time? (acumula com vencedor)
     if (prediction.homeScore === match.homeScore || prediction.awayScore === match.awayScore) {
-      return { points: POINTS.ONE_SCORE, pointType: 'one_score' };
+      points += POINTS.ONE_SCORE;
+      if (pointType === 'miss') pointType = 'one_score';
+      else pointType = 'winner_plus';  // vencedor + gol de um time
     }
 
-    return { points: POINTS.MISS, pointType: 'miss' };
+    return { points, pointType };
   }
 
   /**

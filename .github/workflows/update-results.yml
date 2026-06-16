@@ -2,7 +2,7 @@ name: Update Match Results
 
 on:
   schedule:
-    # Horários pós-jogo (UTC) = ~2h10 após início de cada partida
+    # Horários pós-jogo (UTC) = ~2h após início de cada partida
     - cron: '10 18 * * *'   # 15:10 BRT
     - cron: '10 19 * * *'   # 16:10 BRT
     - cron: '10 21 * * *'   # 18:10 BRT
