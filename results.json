@@ -143,9 +143,9 @@
     "id": "760429",
     "homeTeam": "Saudi Arabia",
     "awayTeam": "Uruguay",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 1,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-06-15T22:00Z",
     "matchday": 0
   },
