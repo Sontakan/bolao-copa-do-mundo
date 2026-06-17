@@ -173,9 +173,9 @@
     "id": "760430",
     "homeTeam": "Iraq",
     "awayTeam": "Norway",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 1,
+    "awayScore": 4,
+    "status": "FINISHED",
     "utcDate": "2026-06-16T22:00Z",
     "matchday": 0
   },
