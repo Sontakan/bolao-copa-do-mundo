@@ -265,7 +265,7 @@
     "awayTeam": "Qatar",
     "homeScore": null,
     "awayScore": null,
-    "status": "TIMED",
+    "status": "IN_PLAY",
     "utcDate": "2026-06-18T22:00Z",
     "matchday": 0
   },
