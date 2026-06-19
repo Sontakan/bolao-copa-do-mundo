@@ -283,9 +283,9 @@
     "id": "760442",
     "homeTeam": "United States",
     "awayTeam": "Australia",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 2,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-06-19T19:00Z",
     "matchday": 0
   },
