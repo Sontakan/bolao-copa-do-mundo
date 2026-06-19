@@ -263,9 +263,9 @@
     "id": "760440",
     "homeTeam": "Canada",
     "awayTeam": "Qatar",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 6,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-06-18T22:00Z",
     "matchday": 0
   },
