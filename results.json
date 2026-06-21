@@ -363,9 +363,9 @@
     "id": "760453",
     "homeTeam": "Spain",
     "awayTeam": "Saudi Arabia",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 4,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-06-21T16:00Z",
     "matchday": 0
   },
