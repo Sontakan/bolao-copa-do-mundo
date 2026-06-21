@@ -373,9 +373,9 @@
     "id": "760451",
     "homeTeam": "Belgium",
     "awayTeam": "Iran",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 0,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-06-21T19:00Z",
     "matchday": 0
   },
