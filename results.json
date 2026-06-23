@@ -413,9 +413,9 @@
     "id": "760457",
     "homeTeam": "France",
     "awayTeam": "Iraq",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 3,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-06-22T21:00Z",
     "matchday": 0
   },
@@ -425,7 +425,7 @@
     "awayTeam": "Senegal",
     "homeScore": null,
     "awayScore": null,
-    "status": "TIMED",
+    "status": "IN_PLAY",
     "utcDate": "2026-06-23T00:00Z",
     "matchday": 0
   },
