@@ -605,7 +605,7 @@
     "awayTeam": "France",
     "homeScore": null,
     "awayScore": null,
-    "status": "TIMED",
+    "status": "IN_PLAY",
     "utcDate": "2026-06-26T19:00Z",
     "matchday": 0
   },
@@ -615,7 +615,7 @@
     "awayTeam": "Iraq",
     "homeScore": null,
     "awayScore": null,
-    "status": "TIMED",
+    "status": "IN_PLAY",
     "utcDate": "2026-06-26T19:00Z",
     "matchday": 0
   },
