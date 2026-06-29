@@ -733,9 +733,9 @@
     "id": "760487",
     "homeTeam": "Brazil",
     "awayTeam": "Japan",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 2,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-06-29T17:00Z",
     "matchday": 0
   },
