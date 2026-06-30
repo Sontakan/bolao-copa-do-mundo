@@ -773,9 +773,9 @@
     "id": "760492",
     "homeTeam": "France",
     "awayTeam": "Sweden",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 3,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-06-30T21:00Z",
     "matchday": 0
   },
