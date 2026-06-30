@@ -83,23 +83,27 @@ jobs:
                       
                       key = f"{home}-{away}"
                       
-                      if status_type == 'STATUS_FULL_TIME':
+                      # Aceita jogos finalizados: tempo normal, prorrogação ou pênaltis
+                      if status_type in ('STATUS_FULL_TIME', 'STATUS_FINAL_AET', 'STATUS_FINAL_PEN'):
                           # Usa linescores para pegar placar dos 90min (só 1º e 2º tempo)
-                          # Se não tiver linescores, usa score total (fase de grupos não tem prorrogação)
                           detail = event.get('status', {}).get('type', {}).get('detail', '')
                           home_linescores = competitors[0].get('linescores', [])
                           away_linescores = competitors[1].get('linescores', [])
                           
-                          if (detail in ('AET', 'FT-Pens')) and len(home_linescores) >= 2:
-                              # Jogo teve prorrogação/pênaltis — soma só 1º e 2º tempo
+                          is_extra_time = status_type in ('STATUS_FINAL_AET', 'STATUS_FINAL_PEN') or detail in ('AET', 'FT-Pens')
+                          
+                          if is_extra_time and len(home_linescores) >= 2:
+                              # Jogo teve prorrogação/pênaltis E temos linescores — soma só 1º e 2º tempo
                               try:
                                   hs = sum(int(ls.get('displayValue', 0)) for ls in home_linescores[:2])
                                   aws = sum(int(ls.get('displayValue', 0)) for ls in away_linescores[:2])
                               except (ValueError, TypeError):
                                   continue
-                              print(f"  (prorrogação detectada, usando placar 90min: {home} {hs}x{aws} {away})")
+                              print(f"  (prorrogação detectada com linescores, usando placar 90min: {home} {hs}x{aws} {away})")
                           else:
-                              # Tempo normal — usa score direto
+                              # Tempo normal OU prorrogação sem linescores disponíveis
+                              # Quando linescores está vazio, o score total já reflete o placar dos 90min
+                              # (ESPN mostra score sem gols de prorrogação/pênaltis no campo score)
                               hs = competitors[0].get('score')
                               aws = competitors[1].get('score')
                               try:
@@ -107,6 +111,8 @@ jobs:
                                   aws = int(aws)
                               except (ValueError, TypeError):
                                   continue
+                              if is_extra_time:
+                                  print(f"  (prorrogação detectada sem linescores, usando score: {home} {hs}x{aws} {away})")
                           
                           if key in match_map:
                               old = match_map[key]
