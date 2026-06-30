@@ -84,13 +84,29 @@ jobs:
                       key = f"{home}-{away}"
                       
                       if status_type == 'STATUS_FULL_TIME':
-                          hs = competitors[0].get('score')
-                          aws = competitors[1].get('score')
-                          try:
-                              hs = int(hs)
-                              aws = int(aws)
-                          except (ValueError, TypeError):
-                              continue
+                          # Usa linescores para pegar placar dos 90min (só 1º e 2º tempo)
+                          # Se não tiver linescores, usa score total (fase de grupos não tem prorrogação)
+                          detail = event.get('status', {}).get('type', {}).get('detail', '')
+                          home_linescores = competitors[0].get('linescores', [])
+                          away_linescores = competitors[1].get('linescores', [])
+                          
+                          if (detail in ('AET', 'FT-Pens')) and len(home_linescores) >= 2:
+                              # Jogo teve prorrogação/pênaltis — soma só 1º e 2º tempo
+                              try:
+                                  hs = sum(int(ls.get('displayValue', 0)) for ls in home_linescores[:2])
+                                  aws = sum(int(ls.get('displayValue', 0)) for ls in away_linescores[:2])
+                              except (ValueError, TypeError):
+                                  continue
+                              print(f"  (prorrogação detectada, usando placar 90min: {home} {hs}x{aws} {away})")
+                          else:
+                              # Tempo normal — usa score direto
+                              hs = competitors[0].get('score')
+                              aws = competitors[1].get('score')
+                              try:
+                                  hs = int(hs)
+                                  aws = int(aws)
+                              except (ValueError, TypeError):
+                                  continue
                           
                           if key in match_map:
                               old = match_map[key]
