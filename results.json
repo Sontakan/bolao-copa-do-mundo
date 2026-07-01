@@ -793,9 +793,9 @@
     "id": "760495",
     "homeTeam": "England",
     "awayTeam": "Congo DR",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 2,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-07-01T16:00Z",
     "matchday": 0
   },
