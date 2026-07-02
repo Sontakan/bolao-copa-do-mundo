@@ -823,9 +823,9 @@
     "id": "760497",
     "homeTeam": "Spain",
     "awayTeam": "Austria",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 3,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-07-02T19:00Z",
     "matchday": 0
   },
