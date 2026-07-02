@@ -34,11 +34,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Fetch and update results from ESPN
+        env:
+          FOOTBALL_API_TOKEN: ${{ secrets.FOOTBALL_API_TOKEN }}
         run: |
           python3 << 'EOF'
           import json
+          import os
           import urllib.request
           from datetime import datetime, timedelta
+
+          FOOTBALL_API_TOKEN = os.environ.get('FOOTBALL_API_TOKEN', '')
 
           # Carrega results.json existente
           try:
@@ -54,9 +59,33 @@ jobs:
                   key = f"{m['homeTeam']}-{m['awayTeam']}"
                   match_map[key] = m
 
+          # Busca dados da football-data.org para obter regularTime de jogos com prorrogação
+          fdata_regular_time = {}  # key: "homeTeam-awayTeam" -> (homeScore90, awayScore90)
+          if FOOTBALL_API_TOKEN:
+              try:
+                  url = "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED"
+                  req = urllib.request.Request(url, headers={
+                      'X-Auth-Token': FOOTBALL_API_TOKEN
+                  })
+                  with urllib.request.urlopen(req, timeout=15) as resp:
+                      fdata = json.loads(resp.read())
+                  
+                  for match in fdata.get('matches', []):
+                      regular = match.get('score', {}).get('regularTime')
+                      if regular and regular.get('home') is not None:
+                          home_name = match.get('homeTeam', {}).get('name', '')
+                          away_name = match.get('awayTeam', {}).get('name', '')
+                          key = f"{home_name}-{away_name}"
+                          fdata_regular_time[key] = (regular['home'], regular['away'])
+                  
+                  print(f"football-data.org: {len(fdata_regular_time)} jogos com regularTime carregados")
+              except Exception as e:
+                  print(f"football-data.org fallback error (non-fatal): {e}")
+
           # Busca resultados da ESPN para os últimos 3 dias e hoje
           today = datetime.utcnow()
           updates = 0
+          aet_games_needing_correction = []  # jogos AET sem linescores para corrigir via fdata
 
           for days_back in range(3):
               date = today - timedelta(days=days_back)
@@ -85,7 +114,6 @@ jobs:
                       
                       # Aceita jogos finalizados: tempo normal, prorrogação ou pênaltis
                       if status_type in ('STATUS_FULL_TIME', 'STATUS_FINAL_AET', 'STATUS_FINAL_PEN'):
-                          # Usa linescores para pegar placar dos 90min (só 1º e 2º tempo)
                           detail = event.get('status', {}).get('type', {}).get('detail', '')
                           home_linescores = competitors[0].get('linescores', [])
                           away_linescores = competitors[1].get('linescores', [])
@@ -99,11 +127,9 @@ jobs:
                                   aws = sum(int(ls.get('displayValue', 0)) for ls in away_linescores[:2])
                               except (ValueError, TypeError):
                                   continue
-                              print(f"  (prorrogação detectada com linescores, usando placar 90min: {home} {hs}x{aws} {away})")
-                          else:
-                              # Tempo normal OU prorrogação sem linescores disponíveis
-                              # Quando linescores está vazio, o score total já reflete o placar dos 90min
-                              # (ESPN mostra score sem gols de prorrogação/pênaltis no campo score)
+                              print(f"  (prorrogação com linescores: {home} {hs}x{aws} {away})")
+                          elif is_extra_time and status_type == 'STATUS_FINAL_PEN':
+                              # Pênaltis sem linescores: score ESPN = placar do tempo regulamentar (empate)
                               hs = competitors[0].get('score')
                               aws = competitors[1].get('score')
                               try:
@@ -111,12 +137,39 @@ jobs:
                                   aws = int(aws)
                               except (ValueError, TypeError):
                                   continue
-                              if is_extra_time:
-                                  print(f"  (prorrogação detectada sem linescores, usando score: {home} {hs}x{aws} {away})")
+                              print(f"  (pênaltis, score ESPN = 90min: {home} {hs}x{aws} {away})")
+                          elif is_extra_time and status_type == 'STATUS_FINAL_AET':
+                              # Prorrogação sem linescores: score ESPN = placar 120min (ERRADO para bolão!)
+                              # Tenta usar football-data.org regularTime
+                              found_regular = False
+                              for fkey, (fh, fa) in fdata_regular_time.items():
+                                  # Match por nome parcial (ESPN e fdata podem usar nomes diferentes)
+                                  if (home.lower() in fkey.lower() or fkey.lower().split('-')[0].strip() in home.lower()) and \
+                                     (away.lower() in fkey.lower() or fkey.lower().split('-')[1].strip() in away.lower()):
+                                      hs = fh
+                                      aws = fa
+                                      found_regular = True
+                                      print(f"  (AET corrigido via football-data.org regularTime: {home} {hs}x{aws} {away})")
+                                      break
+                              
+                              if not found_regular:
+                                  # Sem dados de regularTime — pula este jogo (não registra placar errado)
+                                  print(f"  WARNING: {home} vs {away} AET sem regularTime disponível, pulando")
+                                  aet_games_needing_correction.append(key)
+                                  continue
+                          else:
+                              # Tempo normal — usa score direto
+                              hs = competitors[0].get('score')
+                              aws = competitors[1].get('score')
+                              try:
+                                  hs = int(hs)
+                                  aws = int(aws)
+                              except (ValueError, TypeError):
+                                  continue
                           
                           if key in match_map:
                               old = match_map[key]
-                              if old.get('status') != 'FINISHED' or old.get('homeScore') != hs:
+                              if old.get('status') != 'FINISHED' or old.get('homeScore') != hs or old.get('awayScore') != aws:
                                   match_map[key]['homeScore'] = hs
                                   match_map[key]['awayScore'] = aws
                                   match_map[key]['status'] = 'FINISHED'
@@ -142,6 +195,9 @@ jobs:
               
               except Exception as e:
                   print(f"Error fetching {date_str}: {e}")
+
+          if aet_games_needing_correction:
+              print(f"\nWARNING: {len(aet_games_needing_correction)} jogos AET sem placar 90min disponível")
 
           # Salva resultado atualizado
           result = list(match_map.values())
