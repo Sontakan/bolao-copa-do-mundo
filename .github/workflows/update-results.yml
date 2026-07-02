@@ -128,18 +128,9 @@ jobs:
                               except (ValueError, TypeError):
                                   continue
                               print(f"  (prorrogação com linescores: {home} {hs}x{aws} {away})")
-                          elif is_extra_time and status_type == 'STATUS_FINAL_PEN':
-                              # Pênaltis sem linescores: score ESPN = placar do tempo regulamentar (empate)
-                              hs = competitors[0].get('score')
-                              aws = competitors[1].get('score')
-                              try:
-                                  hs = int(hs)
-                                  aws = int(aws)
-                              except (ValueError, TypeError):
-                                  continue
-                              print(f"  (pênaltis, score ESPN = 90min: {home} {hs}x{aws} {away})")
-                          elif is_extra_time and status_type == 'STATUS_FINAL_AET':
-                              # Prorrogação sem linescores: score ESPN = placar 120min (ERRADO para bolão!)
+                          elif is_extra_time:
+                              # Jogo com tempo extra (AET ou PEN) sem linescores
+                              # NÃO podemos confiar no score da ESPN pois pode ser placar dos 120min
                               # Tenta usar football-data.org regularTime
                               found_regular = False
                               for fkey, (fh, fa) in fdata_regular_time.items():
@@ -149,12 +140,12 @@ jobs:
                                       hs = fh
                                       aws = fa
                                       found_regular = True
-                                      print(f"  (AET corrigido via football-data.org regularTime: {home} {hs}x{aws} {away})")
+                                      print(f"  (tempo extra corrigido via football-data.org regularTime: {home} {hs}x{aws} {away})")
                                       break
                               
                               if not found_regular:
-                                  # Sem dados de regularTime — pula este jogo (não registra placar errado)
-                                  print(f"  WARNING: {home} vs {away} AET sem regularTime disponível, pulando")
+                                  # Sem regularTime — pula este jogo (não registra placar errado)
+                                  print(f"  WARNING: {home} vs {away} tempo extra sem regularTime disponível, pulando")
                                   aet_games_needing_correction.append(key)
                                   continue
                           else:
