@@ -2,17 +2,13 @@ name: Update Match Results
 
 on:
   schedule:
-    # Pós-jogo: início + 2h (horário dos jogos fase de grupos)
-    # Jogos às 13h BRT → termina ~15h BRT = 18:10 UTC
-    - cron: '10 18 * * *'
-    # Jogos às 16h BRT → termina ~18h BRT = 21:10 UTC
-    - cron: '10 21 * * *'
-    # Jogos às 19h BRT → termina ~21h BRT = 00:10 UTC
-    - cron: '10 0 * * *'
-    # Jogos às 22h BRT → termina ~00h BRT = 03:10 UTC
-    - cron: '10 3 * * *'
-    # Extra: checagem final do dia 
-    - cron: '10 6 * * *'
+    # Mata-mata: jogos entre 16:00 e 04:00 UTC
+    # A cada 30min das 17h às 23h UTC (cobre jogos das 16-21h UTC + tempo de partida)
+    - cron: '*/30 17-23 * * *'
+    # A cada 30min das 00h às 05h UTC (cobre jogos noturnos + tempo de partida)
+    - cron: '*/30 0-5 * * *'
+    # Checagem manhã 8h BRT (11 UTC) — pega qualquer jogo que escapou
+    - cron: '0 11 * * *'
   workflow_dispatch:
 
 permissions:
