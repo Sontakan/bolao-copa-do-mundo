@@ -833,9 +833,9 @@
     "id": "760496",
     "homeTeam": "Portugal",
     "awayTeam": "Croatia",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 2,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-07-02T23:00Z",
     "matchday": 0
   },
