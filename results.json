@@ -863,9 +863,9 @@
     "id": "760500",
     "homeTeam": "Argentina",
     "awayTeam": "Cape Verde",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "TIMED",
+    "homeScore": 1,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-07-03T22:00Z",
     "matchday": 0
   },
