@@ -885,7 +885,7 @@
     "awayTeam": "Morocco",
     "homeScore": null,
     "awayScore": null,
-    "status": "TIMED",
+    "status": "IN_PLAY",
     "utcDate": "2026-07-04T17:00Z",
     "matchday": 0
   },
