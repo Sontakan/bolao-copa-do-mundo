@@ -893,9 +893,9 @@
     "id": "760503",
     "homeTeam": "Paraguay",
     "awayTeam": "France",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 0,
+    "awayScore": 1,
+    "status": "FINISHED",
     "utcDate": "2026-07-04T21:00Z",
     "matchday": 0
   },
