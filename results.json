@@ -913,9 +913,9 @@
     "id": "760505",
     "homeTeam": "Mexico",
     "awayTeam": "England",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 2,
+    "awayScore": 3,
+    "status": "FINISHED",
     "utcDate": "2026-07-06T00:00Z",
     "matchday": 0
   },
@@ -981,8 +981,8 @@
   },
   {
     "id": "760512",
-    "homeTeam": "Round of 16 3 Winner",
-    "awayTeam": "Round of 16 4 Winner",
+    "homeTeam": "Norway",
+    "awayTeam": "England",
     "homeScore": null,
     "awayScore": null,
     "status": "TIMED",
