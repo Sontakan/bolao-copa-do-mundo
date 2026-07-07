@@ -953,9 +953,9 @@
     "id": "760508",
     "homeTeam": "Switzerland",
     "awayTeam": "Colombia",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 0,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-07-07T20:00Z",
     "matchday": 0
   },
