@@ -159,13 +159,23 @@ class RankingEngine {
         const normalizedHome = normalizeTeamName(prediction.homeTeam);
         const normalizedAway = normalizeTeamName(prediction.awayTeam);
 
-        // Encontra a partida correspondente ao palpite
+        // Encontra a partida correspondente ao palpite (tenta ambas as direções)
         const match = matches.find(
           m => normalizeTeamName(m.homeTeam) === normalizedHome && normalizeTeamName(m.awayTeam) === normalizedAway
+        ) || matches.find(
+          m => normalizeTeamName(m.homeTeam) === normalizedAway && normalizeTeamName(m.awayTeam) === normalizedHome
         );
 
-        if (match && match.status === 'FINISHED' && match.homeScore !== null && match.awayScore !== null) {
-          const result = this._calculatePoints(prediction, match);
+        // Se encontrou invertido, ajusta os scores para a perspectiva do palpite
+        let matchHomeScore = match ? match.homeScore : null;
+        let matchAwayScore = match ? match.awayScore : null;
+        if (match && normalizeTeamName(match.homeTeam) === normalizedAway) {
+          matchHomeScore = match.awayScore;
+          matchAwayScore = match.homeScore;
+        }
+
+        if (match && match.status === 'FINISHED' && matchHomeScore !== null && matchAwayScore !== null) {
+          const result = this._calculatePoints(prediction, { homeScore: matchHomeScore, awayScore: matchAwayScore });
           totalPoints += result.points;
 
           if (result.pointType === 'exact') exactPredictions++;
@@ -176,8 +186,8 @@ class RankingEngine {
             awayTeam: prediction.awayTeam,
             predictedHome: prediction.homeScore,
             predictedAway: prediction.awayScore,
-            actualHome: match.homeScore,
-            actualAway: match.awayScore,
+            actualHome: matchHomeScore,
+            actualAway: matchAwayScore,
             points: result.points,
             pointType: result.pointType,
             matchStatus: match.status,
@@ -188,8 +198,8 @@ class RankingEngine {
             awayTeam: prediction.awayTeam,
             predictedHome: prediction.homeScore,
             predictedAway: prediction.awayScore,
-            actualHome: match ? match.homeScore : null,
-            actualAway: match ? match.awayScore : null,
+            actualHome: matchHomeScore,
+            actualAway: matchAwayScore,
             points: 0,
             pointType: 'pending',
             matchStatus: match ? match.status : 'UNKNOWN',

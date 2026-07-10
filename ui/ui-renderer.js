@@ -288,7 +288,8 @@ export class UIRenderer {
     for (const p of predictions) {
       const normalizedPredHome = this._normalizeTeamName(p.homeTeam);
       const normalizedPredAway = this._normalizeTeamName(p.awayTeam);
-      if (normalizedPredHome === normalizedMatchHome && normalizedPredAway === normalizedMatchAway) {
+      if ((normalizedPredHome === normalizedMatchHome && normalizedPredAway === normalizedMatchAway) ||
+          (normalizedPredHome === normalizedMatchAway && normalizedPredAway === normalizedMatchHome)) {
         matchPredictions.push(p);
       }
     }
