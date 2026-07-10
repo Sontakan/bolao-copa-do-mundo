@@ -342,8 +342,11 @@ export class UIRenderer {
 
   /**
    * Normaliza nome de time PT-BR para inglês (para matching).
+   * Remove acentos automaticamente como fallback.
    */
   _normalizeTeamName(name) {
+    if (!name) return '';
+    const trimmed = name.trim();
     const map = {
       'México': 'Mexico', 'Mexico': 'Mexico',
       'África do Sul': 'South Africa', 'Africa do Sul': 'South Africa',
@@ -396,7 +399,11 @@ export class UIRenderer {
       'Türkiye': 'Turkey',
       'Cape Verde': 'Cape Verde Islands',
     };
-    return map[name] || name;
+    if (map[trimmed]) return map[trimmed];
+    // Tenta sem acentos
+    const noAccents = trimmed.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (map[noAccents]) return map[noAccents];
+    return trimmed;
   }
 
   /**

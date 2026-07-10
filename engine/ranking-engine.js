@@ -133,13 +133,20 @@ const TEAM_ALIASES = {
 
 /**
  * Normaliza nome de time para comparação.
+ * Remove acentos e faz trim antes de buscar no mapa.
  */
 function normalizeTeamName(name) {
-  // Primeiro tenta o mapa PT-BR → inglês
-  if (TEAM_NAME_MAP[name]) return TEAM_NAME_MAP[name];
+  if (!name) return '';
+  const trimmed = name.trim();
+  // Primeiro tenta o mapa PT-BR → inglês (com o nome original)
+  if (TEAM_NAME_MAP[trimmed]) return TEAM_NAME_MAP[trimmed];
   // Depois tenta aliases da ESPN
-  if (TEAM_ALIASES[name]) return TEAM_ALIASES[name];
-  return name;
+  if (TEAM_ALIASES[trimmed]) return TEAM_ALIASES[trimmed];
+  // Tenta sem acentos
+  const noAccents = trimmed.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (TEAM_NAME_MAP[noAccents]) return TEAM_NAME_MAP[noAccents];
+  if (TEAM_ALIASES[noAccents]) return TEAM_ALIASES[noAccents];
+  return trimmed;
 }
 
 /**
