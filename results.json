@@ -975,7 +975,7 @@
     "awayTeam": "Belgium",
     "homeScore": null,
     "awayScore": null,
-    "status": "TIMED",
+    "status": "IN_PLAY",
     "utcDate": "2026-07-10T19:00Z",
     "matchday": 0
   },
