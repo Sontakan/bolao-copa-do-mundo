@@ -1003,9 +1003,9 @@
     "id": "760514",
     "homeTeam": "France",
     "awayTeam": "Spain",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 0,
+    "awayScore": 2,
+    "status": "FINISHED",
     "utcDate": "2026-07-14T19:00Z",
     "matchday": 0
   },
