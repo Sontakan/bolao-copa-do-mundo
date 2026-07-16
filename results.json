@@ -1021,8 +1021,8 @@
   },
   {
     "id": "760516",
-    "homeTeam": "Semifinal 1 Loser",
-    "awayTeam": "Semifinal 2 Loser",
+    "homeTeam": "France",
+    "awayTeam": "England",
     "homeScore": null,
     "awayScore": null,
     "status": "TIMED",
@@ -1031,8 +1031,8 @@
   },
   {
     "id": "760517",
-    "homeTeam": "Semifinal 1 Winner",
-    "awayTeam": "Semifinal 2 Winner",
+    "homeTeam": "Spain",
+    "awayTeam": "Argentina",
     "homeScore": null,
     "awayScore": null,
     "status": "TIMED",
