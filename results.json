@@ -1033,9 +1033,9 @@
     "id": "760517",
     "homeTeam": "Spain",
     "awayTeam": "Argentina",
-    "homeScore": null,
-    "awayScore": null,
-    "status": "IN_PLAY",
+    "homeScore": 0,
+    "awayScore": 0,
+    "status": "FINISHED",
     "utcDate": "2026-07-19T19:00Z",
     "matchday": 0
   }
