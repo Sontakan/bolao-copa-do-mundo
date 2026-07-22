@@ -107,7 +107,7 @@ async function main() {
 
     if (predictions) {
       // Temos ambos — calcula ranking completo
-      const ranking = rankingEngine.calculateRanking(predictions, finishedMatches, championPicks, null);
+      const ranking = rankingEngine.calculateRanking(predictions, finishedMatches, championPicks, 'Spain');
       ui.renderRanking(ranking);
 
       if (finishedMatches.length === 0) {
@@ -118,7 +118,7 @@ async function main() {
     ui.renderMatchList(matches, predictions);
   } else if (predictions) {
     // Temos palpites mas não temos partidas — mostra ranking zerado
-    const ranking = rankingEngine.calculateRanking(predictions, [], championPicks, null);
+    const ranking = rankingEngine.calculateRanking(predictions, [], championPicks, 'Spain');
     ui.renderRanking(ranking);
     ui.renderError(
       'Não foi possível obter os resultados das partidas. Tente novamente mais tarde.'

@@ -242,7 +242,7 @@ class RankingEngine {
       let championPoints = 0;
       const championPick = championPicks.get(name) || null;
       if (actualChampion && championPick) {
-        const normalizedPick = TEAM_NAME_MAP[championPick] || championPick;
+        const normalizedPick = normalizeTeamName(championPick);
         if (normalizedPick === actualChampion) {
           championPoints = POINTS.CHAMPION;
           totalPoints += championPoints;
